@@ -101,7 +101,12 @@ CON
             DRV_STRENGTH_LOW    = 3
 
     GET_ADC_READING             = $14
+
     FIFO_INFO                   = $15
+        ARG_FIFO                = 0
+        FLD_TX                  = 0
+        FLD_RX                  = 1
+
     PACKET_INFO                 = $16
     IRCAL                       = $17
     IRCAL_MANUAL                = $1A

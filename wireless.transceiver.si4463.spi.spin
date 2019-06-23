@@ -24,7 +24,7 @@ OBJ
 
     spi : "com.spi.4w"                                             'PASM SPI Driver
     core: "core.con.si4463"
-    time: "time"                                                'Basic timing functions
+    time: "time"
 
 PUB Null
 ''This is not a top-level object
@@ -78,13 +78,35 @@ PUB ClkTest(clkdiv)| tmp[2]
     tmp := (1 << core#FLD_DIV_CLK_EN) | (clkdiv << core#FLD_DIV_CLK_SEL)
     result := setProperty(core#GROUP_GLOBAL, 1, core#GLOBAL_CLK_CFG, @tmp)
 
-PUB PartID | tmp
+PUB FIFORXBytes | tmp
+' Number of bytes in the RX FIFO
+    tmp := %00
+    readReg(core#FIFO_INFO, 1, @result)
 
+PUB FIFOTXBytes | tmp
+' Number of bytes in the TX FIFO
+    tmp := %00
+    readReg(core#FIFO_INFO, 2, @result)
+    result >>= 8
+
+PUB FlushRX | tmp
+' Flush the RX FIFO
+    tmp := %1 << core#FLD_RX
+    result := writeReg(core#FIFO_INFO, 1, @tmp)
+
+PUB FlushTX | tmp
+' Flush the TX FIFO
+    tmp := %1
+    result := writeReg(core#FIFO_INFO, 1, @tmp)
+
+PUB PartID | tmp
+' Read the Part ID from the device
+'   Returns: 4-digit part ID
     readReg(core#PART_INFO, 8, @tmp)
     return (tmp.byte[core#REPL_PARTMSB] << 8) | tmp.byte[core#REPL_PARTLSB]
 
 PUB PowerUp(osc_freq) | tmp[2]
-
+' Perform device powerup, and specify oscillator frequency
     tmp.byte[core#ARG_BOOT_OPTIONS] := core#EZRADIO_PRO
     tmp.byte[core#ARG_XTAL_OPTIONS] := core#XTAL
     case osc_freq
