@@ -37,6 +37,22 @@ CON
         REPL_ROMID              = 7
 
     POWER_UP                    = $02
+        ARG_BOOT_OPTIONS        = 0
+            FLD_PATCH           = 7
+            FLD_FUNC            = 0
+            BITS_FUNC           = %111111
+            EZRADIO_PRO         = 1
+            NO_PATCH            = 0 << FLD_PATCH
+            PATCH               = 1 << FLD_PATCH
+        ARG_XTAL_OPTIONS        = 1
+            FLD_TCXO            = 0
+            XTAL                = 0 << FLD_TCXO
+            TCXO                = 1 << FLD_TCXO
+        ARG_XO_FREQ_MSB         = 2
+        ARG_XO_FREQ_MSMB        = 3
+        ARG_XO_FREQ_LSMB        = 4
+        ARG_XO_FREQ_LSB         = 5
+
     FUNC_INFO                   = $10
     SET_PROPERTY                = $11
     GET_PROPERTY                = $12

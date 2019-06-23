@@ -83,14 +83,21 @@ PUB PartID | tmp
     readReg(core#PART_INFO, 8, @tmp)
     return (tmp.byte[core#REPL_PARTMSB] << 8) | tmp.byte[core#REPL_PARTLSB]
 
-PUB PowerUp | tmp[2]
+PUB PowerUp(osc_freq) | tmp[2]
 
-    tmp.byte[0] := $01  'BOOT_OPTIONS
-    tmp.byte[1] := $00  'XTAL_OPTIONS
-    tmp.byte[2] := $01  'XO_FREQ (U32)
-    tmp.byte[3] := $C9  '|
-    tmp.byte[4] := $C3  '|
-    tmp.byte[5] := $80  '|
+    tmp.byte[core#ARG_BOOT_OPTIONS] := core#PRO
+    tmp.byte[core#ARG_XTAL_OPTIONS] := core#XTAL
+    case osc_freq
+        25_000_000..32_000_000:
+            tmp.byte[core#ARG_XO_FREQ_MSB] := osc_freq.byte[3]
+            tmp.byte[core#ARG_XO_FREQ_MSMB] := osc_freq.byte[2]
+            tmp.byte[core#ARG_XO_FREQ_LSMB] := osc_freq.byte[1]
+            tmp.byte[core#ARG_XO_FREQ_LSB] := osc_freq.byte[0]
+        OTHER:
+            tmp.byte[core#ARG_XO_FREQ_MSB] := $01
+            tmp.byte[core#ARG_XO_FREQ_MSMB] := $C9
+            tmp.byte[core#ARG_XO_FREQ_LSMB] := $C3
+            tmp.byte[core#ARG_XO_FREQ_LSB] := $80
     
     result := writeReg(core#POWER_UP, 6, @tmp)
 

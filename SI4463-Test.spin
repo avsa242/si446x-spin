@@ -37,9 +37,9 @@ PUB Main | tmp[2], i
 
     Setup
 
-    ser.Hex (rf.PowerUp, 8)
+    ser.Hex (rf.PowerUp(30_000_000), 8)
     ser.NewLine
-    ser.Hex (rf.ClkTest(30), 8)
+    ser.Hex (rf.ClkTest(1), 8)
     ser.NewLine
     ser.Hex ( rf.SPIActive, 8)
     ser.NewLine
