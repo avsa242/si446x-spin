@@ -52,8 +52,20 @@ CON
     GET_CHIP_STATUS             = $23
     START_TX                    = $31
     START_RX                    = $32
+
     REQUEST_DEVICE_STATE        = $33
+        BITS_MAIN_STATE         = %1111
+
     CHANGE_STATE                = $34
+    STATE_SLEEP                 = 1     ' Applicable to REQUEST_DEVICE_STATE and CHANGE_STATE
+    STATE_SPI_ACTIVE            = 2
+    STATE_READY                 = 3
+    STATE_READY2                = 4     ' Not used in CHANGE_STATE
+    STATE_TX_TUNE               = 5
+    STATE_RX_TUNE               = 6
+    STATE_TX                    = 7
+    STATE_RX                    = 8
+
     RX_HOP                      = $36
     TX_HOP                      = $37
     READ_CMD_BUFF               = $44
@@ -64,6 +76,35 @@ CON
     FAST_RESP_B                 = $51
     FAST_RESP_C                 = $53
     FAST_RESP_D                 = $57
+
+' Properties
+'   Properties are organized together with related functionality in 'Groups'
+'   Multiple individual properties within a group
+    GROUP_GLOBAL                = $00
+        GLOBAL_CLK_CFG          = $01
+        MASK_GLOBAL_CLK_CFG     = $7B
+            FLD_CLK_32K_SEL     = 0
+            FLD_DIV_CLK_SEL     = 3
+            FLD_DIV_CLK_EN      = 6
+            BITS_CLK_32K_SEL    = %11
+            BITS_DIV_CLK_SEL    = %111
+            BITS_DIV_CLK_EN     = %111
+            MASK_CLK_32K_SEL    = MASK_GLOBAL_CLK_CFG ^ (BITS_CLK_32K_SEL << FLD_CLK_32K_SEL)
+            MASK_DIV_CLK_SEL    = MASK_GLOBAL_CLK_CFG ^ (BITS_DIV_CLK_SEL << FLD_DIV_CLK_SEL)
+            MASK_DIV_CLK_EN     = MASK_GLOBAL_CLK_CFG ^ (BITS_DIV_CLK_EN << FLD_DIV_CLK_EN)
+            
+    GROUP_INT_CTL               = $01
+    GROUP_FRR_CTL               = $02
+    GROUP_PREAMBLE              = $10
+    GROUP_SYNC                  = $11
+    GROUP_PKT                   = $12
+    GROUP_MODEM                 = $20
+    GROUP_MODEM_CHFLT           = $21
+    GROUP_PA                    = $22
+    GROUP_SYNTH                 = $23
+    GROUP_MATCH                 = $30
+    GROUP_FREQ                  = $40
+    GROUP_RX                    = $50
     
 PUB Null
 ' This is not a top-level object

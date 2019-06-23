@@ -37,9 +37,13 @@ PUB Main | tmp[2], i
 
     Setup
 
-    ser.Hex (rf.PowerUp, 2)
+    ser.Hex (rf.PowerUp, 8)
     ser.NewLine
-    ser.Hex (rf.OutClk, 2)
+    ser.Hex (rf.OutClk, 8)
+    ser.NewLine
+    ser.Hex ( rf.SPIActive, 8)
+    ser.NewLine
+    ser.Hex ( rf.State, 8)
     Flash (LED, 100)
 
 PUB Setup
