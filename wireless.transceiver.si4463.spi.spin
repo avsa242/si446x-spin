@@ -12,6 +12,16 @@
 
 CON
 
+' Operating states
+    STATE_NOCHANGE      = 0
+    STATE_SLEEP         = 1
+    STATE_SPI_ACTIVE    = 2
+    STATE_READY         = 3
+    STATE_TX_TUNE       = 5
+    STATE_RX_TUNE       = 6
+    STATE_TX            = 7
+    STATE_RX            = 8
+
 ' Flags for the Clear-to-Send method
     DESELECT_AFTER      = TRUE
     NO_DESELECT_AFTER   = FALSE
@@ -98,6 +108,7 @@ PUB FlushTX | tmp
 ' Flush the TX FIFO
     tmp := %1
     result := writeReg(core#FIFO_INFO, 1, @tmp)
+
 PUB InterruptStatus(buff_addr) | tmp[2]
 ' Read interrupt status into buffer at buff_addr
 '   NOTE: Buffer must be at least 8 bytes
@@ -139,9 +150,24 @@ PUB SPIActive | tmp
     tmp.byte[0] := 2
     result := writeReg( core#CHANGE_STATE, 1, @tmp)
 
-PUB State
+PUB State(new_state) | tmp
+' Manually switch chip to desired operating state
+'   Valid values:
+'       STATE_SLEEP (1): Put chip in SLEEP or STANDBY state
+'       STATE_SPI_ACTIVE (2): SPI_ACTIVE state
+'       STATE_READY (3): READY state
+'       STATE_TX_TUNE (5): TX_TUNE state
+'       STATE_RX_TUNE (6): RX_TUNE state
+'       STATE_TX (7): TX state
+'       STATE_RX (8): RX state
+'   Any other value polls the chip and returns the current state
+    readReg(core#FAST_RESP_C, 1, @tmp)
+    case new_state
+        STATE_SLEEP, STATE_SPI_ACTIVE, STATE_READY, STATE_TX_TUNE, STATE_RX_TUNE, STATE_TX, STATE_RX:
+        OTHER:
+            return tmp
 
-    readReg(core#FAST_RESP_C, 1, @result)
+    result := writeReg(core#CHANGE_STATE, 1, @new_state)
 
 PRI clearToSend(deselect)
 ' Check the CTS (Clear-to-Send) status from the device

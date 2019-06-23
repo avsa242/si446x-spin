@@ -41,9 +41,10 @@ PUB Main | tmp[2], i
     ser.NewLine
     ser.Hex (rf.ClkTest(1), 8)
     ser.NewLine
-    ser.Hex ( rf.SPIActive, 8)
+    ser.Hex (rf.State (rf#STATE_SPI_ACTIVE), 8)
     ser.NewLine
-    ser.Hex ( rf.State, 8)
+    ser.Dec (rf.State (rf#STATE_NOCHANGE))
+    ser.NewLine
     ser.NewLine
     rf.InterruptStatus (@tmp)
 
