@@ -39,7 +39,7 @@ PUB Main | tmp[2], i
 
     ser.Hex (rf.PowerUp, 8)
     ser.NewLine
-    ser.Hex (rf.OutClk, 8)
+    ser.Hex (rf.ClkTest(30), 8)
     ser.NewLine
     ser.Hex ( rf.SPIActive, 8)
     ser.NewLine

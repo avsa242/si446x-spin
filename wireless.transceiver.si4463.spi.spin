@@ -54,26 +54,34 @@ PUB Stop
 
     spi.stop
 
-PUB PartID | tmp
+PUB ClkTest(clkdiv)| tmp[2]
+' Test system clock output, divided by clkdiv
+'   Valid values: 1, 2, 3, 7_5 (7.5), 10, 15, 30
+'   Any other value sets the divisor to 1
+    case clkdiv
+        1, 2, 3, 7_5, 10, 15, 30:
+            clkdiv := lookdownz(clkdiv: 1, 2, 3, 7_5, 10, 15, 30)
+        OTHER:
+            clkdiv := core#DIV_1
 
-    readReg(core#PART_INFO, 8, @tmp)
-    return (tmp.byte[core#REPL_PARTMSB] << 8) | tmp.byte[core#REPL_PARTLSB]
-
-PUB OutClk | tmp[2]
-
-    tmp.byte[0] := $11'(1 << 6) | 6 'GPIO0
-    tmp.byte[1] := $11'$01          'GPIO1
-    tmp.byte[2] := $61'$01          'GPIO2
-    tmp.byte[3] := $60'$01          'GPIO3
-    tmp.byte[4] := $07'$07          'NIRQ
-    tmp.byte[5] := $0B          'SDO - 0=No change, $0B=Output SDO
-    tmp.byte[6] := $00          'GEN_CONFIG
+    tmp.byte[core#ARG_GPIO0] := core#PULL_EN | core#GPIO_DIV_CLK
+    tmp.byte[core#ARG_GPIO1] := core#PULL_EN | core#GPIO_CTS
+    tmp.byte[core#ARG_GPIO2] := core#PULL_EN | core#GPIO_TRISTATE
+    tmp.byte[core#ARG_GPIO3] := core#PULL_EN | core#GPIO_TRISTATE
+    tmp.byte[core#ARG_NIRQ] := core#PULL_EN | core#GPIO_NIRQ
+    tmp.byte[core#ARG_SDO] := core#PULL_EN | core#GPIO_SDO
+    tmp.byte[core#ARG_GEN_CONFIG] := core#DRV_STRENGTH_HIGH
 
     result := writeReg(core#GPIO_PIN_CFG, 7, @tmp)
     tmp[0] := 0
     tmp[1] := 0
-    tmp := (1 << core#FLD_DIV_CLK_EN) | (6 << core#FLD_DIV_CLK_SEL)
+    tmp := (1 << core#FLD_DIV_CLK_EN) | (clkdiv << core#FLD_DIV_CLK_SEL)
     result := setProperty(core#GROUP_GLOBAL, 1, core#GLOBAL_CLK_CFG, @tmp)
+
+PUB PartID | tmp
+
+    readReg(core#PART_INFO, 8, @tmp)
+    return (tmp.byte[core#REPL_PARTMSB] << 8) | tmp.byte[core#REPL_PARTLSB]
 
 PUB PowerUp | tmp[2]
 
