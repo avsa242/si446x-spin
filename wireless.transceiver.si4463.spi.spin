@@ -1,30 +1,49 @@
 {
     --------------------------------------------
     Filename: wireless.transceiver.si4463.spi.spin
-    Author:
-    Description:
+    Author: Jesse Burt
+    Description: Driver for Silicon Labs Si446x series transceivers
     Copyright (c) 2019
     Started Jun 22, 2019
-    Updated Jun 22, 2019
+    Updated Jun 23, 2019
     See end of file for terms of use.
     --------------------------------------------
 }
 
 CON
 
+
+' Fast-Response Registers
+    FRR_A                   = 0
+    FRR_B                   = 1
+    FRR_C                   = 2
+    FRR_D                   = 3
+
+    FRRMODE_DISABLED        = 0
+    FRRMODE_INT_STATUS      = 1
+    FRRMODE_INT_PEND        = 2
+    FRRMODE_INT_PH_STATUS   = 3
+    FRRMODE_INT_PH_PEND     = 4
+    FRRMODE_INT_MODEM_STATUS= 5
+    FRRMODE_INT_MODEM_PEND  = 6
+    FRRMODE_INT_CHIP_STATUS = 7
+    FRRMODE_INT_CHIP_PEND   = 8
+    FRRMODE_CURRENT_STATE   = 9
+    FRRMODE_LATCHED_RSSI    = 10
+
 ' Operating states
-    STATE_NOCHANGE      = 0
-    STATE_SLEEP         = 1
-    STATE_SPI_ACTIVE    = 2
-    STATE_READY         = 3
-    STATE_TX_TUNE       = 5
-    STATE_RX_TUNE       = 6
-    STATE_TX            = 7
-    STATE_RX            = 8
+    STATE_NOCHANGE          = 0
+    STATE_SLEEP             = 1
+    STATE_SPI_ACTIVE        = 2
+    STATE_READY             = 3
+    STATE_TX_TUNE           = 5
+    STATE_RX_TUNE           = 6
+    STATE_TX                = 7
+    STATE_RX                = 8
 
 ' Flags for the Clear-to-Send method
-    DESELECT_AFTER      = TRUE
-    NO_DESELECT_AFTER   = FALSE
+    DESELECT_AFTER          = TRUE
+    NO_DESELECT_AFTER       = FALSE
 
 VAR
 
@@ -87,6 +106,36 @@ PUB ClkTest(clkdiv)| tmp[2]
     tmp[1] := 0
     tmp := (1 << core#FLD_DIV_CLK_EN) | (clkdiv << core#FLD_DIV_CLK_SEL)
     result := setProperty(core#GROUP_GLOBAL, 1, core#GLOBAL_CLK_CFG, @tmp)
+
+PUB FastRespRegCfg(reg, mode) | tmp
+' Configure the information available in the Fast-Response Registers A, B, C, D
+'   Valid values:
+'       reg: FRR_A (0), FRR_B (1), FRR_C (2), FRR_D (3)
+'       mode:
+'           DISABLED (0): Disabled. Will always read back 0.
+'           INT_STATUS (1): Global status
+'           INT_PEND (2): Global interrupt pending
+'           INT_PH_STATUS (3): Packet Handler status
+'           INT_PH_PEND (4): Packet Handler interrupt pending
+'           INT_MODEM_STATUS (5): Modem status
+'           INT_MODEM_PEND (6): Modem interrupt pending
+'           INT_CHIP_STATUS (7): Chip status
+'           INT_CHIP_PEND (8): Chip status interrupt pending
+'           CURRENT_STATE (9): Current state
+'           LATCHED_RSSI (10): Latched RSSI value
+    case reg
+        FRR_A..FRR_D:
+        OTHER:
+            return
+
+    getProperty(core#GROUP_FRR_CTL, 1, reg, @tmp)
+
+    case mode
+        FRRMODE_DISABLED..FRRMODE_LATCHED_RSSI:
+        OTHER:
+            return tmp
+
+    setProperty(core#GROUP_FRR_CTL, 1, reg, mode)
 
 PUB FIFORXBytes | tmp
 ' Number of bytes in the RX FIFO

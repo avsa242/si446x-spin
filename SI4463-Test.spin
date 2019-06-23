@@ -1,11 +1,11 @@
 {
     --------------------------------------------
     Filename: SI4463-Test.spin
-    Author:
-    Description:
+    Author: Jesse Burt
+    Description: Test of the Si446x driver
     Copyright (c) 2019
     Started Jun 22, 2019
-    Updated Jun 22, 2019
+    Updated Jun 23, 2019
     See end of file for terms of use.
     --------------------------------------------
 }
