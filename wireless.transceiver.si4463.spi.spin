@@ -98,6 +98,13 @@ PUB FlushTX | tmp
 ' Flush the TX FIFO
     tmp := %1
     result := writeReg(core#FIFO_INFO, 1, @tmp)
+PUB InterruptStatus(buff_addr) | tmp[2]
+' Read interrupt status into buffer at buff_addr
+'   NOTE: Buffer must be at least 8 bytes
+    tmp.byte[core#ARG_PH_CLR_PEND] := %1111_1111
+    tmp.byte[core#ARG_MODEM_CLR_PEND] := %1111_1111
+    tmp.byte[core#ARG_CHIP_CLR_PEND] := %0111_1111
+    readReg(core#GET_INT_STATUS, 8, @tmp)
 
 PUB PartID | tmp
 ' Read the Part ID from the device
@@ -185,6 +192,23 @@ PRI readReg(reg, nr_bytes, buff_addr) | tmp, i
                 else
                     outa[_CS] := 1
                     return $E000_0002
+
+        core#GET_INT_STATUS:
+            if clearToSend(DESELECT_AFTER)
+                outa[_CS] := 0
+                spi.SHIFTOUT (_MOSI, _SCK, core#MOSI_BITORDER, 8, reg)
+                repeat i from 0 to 2
+                    spi.SHIFTOUT (_MOSI, _SCK, core#MOSI_BITORDER, 8, byte[buff_addr][i])
+                outa[_CS] := 1
+                result := clearToSend(NO_DESELECT_AFTER)
+                if result
+                    repeat i from 0 to nr_bytes-1
+                        byte[buff_addr][i] := spi.SHIFTIN (_MISO, _SCK, core#MISO_BITORDER, 8)
+                    outa[_CS] := 1
+                else
+                    outa[_CS] := 1
+                    return $E000_0003
+
         $01..$02, $10..$11, $13..$17, $1A, $20..$23, $31..$34, $36..$37, $44, $66, $77:
             if clearToSend(DESELECT_AFTER)
                 outa[_CS] := 0

@@ -44,6 +44,12 @@ PUB Main | tmp[2], i
     ser.Hex ( rf.SPIActive, 8)
     ser.NewLine
     ser.Hex ( rf.State, 8)
+    ser.NewLine
+    rf.InterruptStatus (@tmp)
+
+    repeat i from 0 to 7
+        ser.Bin (tmp.byte[i], 8)
+        ser.NewLine
     Flash (LED, 100)
 
 PUB Setup

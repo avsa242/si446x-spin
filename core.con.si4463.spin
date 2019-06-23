@@ -110,7 +110,12 @@ CON
     PACKET_INFO                 = $16
     IRCAL                       = $17
     IRCAL_MANUAL                = $1A
+
     GET_INT_STATUS              = $20
+        ARG_PH_CLR_PEND         = 0
+        ARG_MODEM_CLR_PEND      = 1
+        ARG_CHIP_CLR_PEND       = 2
+
     GET_PH_STATUS               = $21
     GET_MODEM_STATUS            = $22
     GET_CHIP_STATUS             = $23
