@@ -85,7 +85,7 @@ PUB PartID | tmp
 
 PUB PowerUp(osc_freq) | tmp[2]
 
-    tmp.byte[core#ARG_BOOT_OPTIONS] := core#PRO
+    tmp.byte[core#ARG_BOOT_OPTIONS] := core#EZRADIO_PRO
     tmp.byte[core#ARG_XTAL_OPTIONS] := core#XTAL
     case osc_freq
         25_000_000..32_000_000:
@@ -129,6 +129,13 @@ PRI clearToSend(deselect)
 
     return' (result == $FF)
 
+PRI getProperty(group, nr_props, start_prop, buff_addr) | tmp[4], i
+
+    tmp.byte[0] := group
+    tmp.byte[1] := nr_props
+    tmp.byte[2] := start_prop
+    readReg(core#GET_PROPERTY, nr_props, @tmp)
+
 PRI setProperty(group, nr_props, start_prop, buff_addr) | tmp[4], i
 
     tmp.byte[0] := group
@@ -141,7 +148,22 @@ PRI setProperty(group, nr_props, start_prop, buff_addr) | tmp[4], i
 PRI readReg(reg, nr_bytes, buff_addr) | tmp, i
 
     case reg
-        $01..$02, $10..$17, $1A, $20..$23, $31..$34, $36..$37, $44, $66, $77:
+        core#GET_PROPERTY:
+            if clearToSend(DESELECT_AFTER)
+                outa[_CS] := 0
+                spi.SHIFTOUT (_MOSI, _SCK, core#MOSI_BITORDER, 8, reg)
+                repeat i from 0 to 2
+                    spi.SHIFTOUT (_MOSI, _SCK, core#MOSI_BITORDER, 8, byte[buff_addr][i])
+                outa[_CS] := 1
+                result := clearToSend(NO_DESELECT_AFTER)
+                if result
+                    repeat i from 0 to nr_bytes-1
+                        byte[buff_addr][i] := spi.SHIFTIN (_MISO, _SCK, core#MISO_BITORDER, 8)
+                    outa[_CS] := 1
+                else
+                    outa[_CS] := 1
+                    return $E000_0002
+        $01..$02, $10..$11, $13..$17, $1A, $20..$23, $31..$34, $36..$37, $44, $66, $77:
             if clearToSend(DESELECT_AFTER)
                 outa[_CS] := 0
                 spi.SHIFTOUT (_MOSI, _SCK, core#MOSI_BITORDER, 8, reg)
