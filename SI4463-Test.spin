@@ -43,14 +43,26 @@ PUB Main | tmp[2], i
     ser.NewLine
     ser.Hex (rf.State (rf#STATE_SPI_ACTIVE), 8)
     ser.NewLine
+    ser.Str (string("STATE: "))
     ser.Dec (rf.State (rf#STATE_NOCHANGE))
     ser.NewLine
     ser.NewLine
-    rf.InterruptStatus (@tmp)
 
+    ser.Str (string("Interrupts: ", ser#NL))
+    rf.InterruptStatus (@tmp)
     repeat i from 0 to 7
         ser.Bin (tmp.byte[i], 8)
         ser.NewLine
+    ser.NewLine
+    rf.State (rf#STATE_RX)
+    ser.Str (string("STATE: "))
+    ser.Dec (rf.State (rf#STATE_NOCHANGE))
+    time.MSleep (1)
+    ser.Str (string(ser#NL, "FIFO: "))
+    rf.RXData (8, @tmp)
+    repeat i from 0 to 7
+        ser.Hex (tmp.byte[i], 2)
+        ser.Char (" ")
     Flash (LED, 100)
 
 PUB Setup

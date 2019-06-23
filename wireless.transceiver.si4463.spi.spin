@@ -145,6 +145,11 @@ PUB NoOp
 
     return readReg(core#NOOP, 0, @result)
 
+PUB RXData(nr_bytes, buff_addr)
+' Read nr_bytes from RX FIFO into buff_addr
+'   NOTE: Buffer must be large enough to hold nr_bytes
+    readReg(core#READ_RX_FIFO, nr_bytes, @buff_addr)
+
 PUB SPIActive | tmp
 
     tmp.byte[0] := 2
@@ -235,7 +240,7 @@ PRI readReg(reg, nr_bytes, buff_addr) | tmp, i
                     outa[_CS] := 1
                     return $E000_0003
 
-        $01..$02, $10..$11, $13..$17, $1A, $20..$23, $31..$34, $36..$37, $44, $66, $77:
+        $01..$02, $10..$11, $13..$17, $1A, $20..$23, $31..$34, $36..$37, $44:
             if clearToSend(DESELECT_AFTER)
                 outa[_CS] := 0
                 spi.SHIFTOUT (_MOSI, _SCK, core#MOSI_BITORDER, 8, reg)
@@ -251,7 +256,17 @@ PRI readReg(reg, nr_bytes, buff_addr) | tmp, i
                     return $E000_0001
             else
                 return $E000_0000
-        $50, $51, $53, $57:                 'Fast-response registers (FRR's) don't require checking the CTS flag
+
+        core#WRITE_TX_FIFO:
+
+        core#READ_RX_FIFO:
+            outa[_CS] := 0
+            spi.SHIFTOUT (_MOSI, _SCK, core#MISO_BITORDER, 8, reg)
+            repeat i from 0 to nr_bytes-1
+                byte[buff_addr][i] := spi.SHIFTIN (_MISO, _SCK, core#MISO_BITORDER, 8)
+            outa[_CS] := 1
+
+        core#FAST_RESP_A, core#FAST_RESP_B, core#FAST_RESP_C, core#FAST_RESP_D:         'Fast-response registers (FRR's) don't require checking the CTS flag
             outa[_CS] := 0
             spi.SHIFTOUT (_MOSI, _SCK, core#MOSI_BITORDER, 8, reg)
             repeat i from 0 to nr_bytes-1
