@@ -1,11 +1,11 @@
 {
     --------------------------------------------
-    Filename: SI4463-Test.spin
+    Filename: SI446x-Test.spin
     Author: Jesse Burt
     Description: Test of the Si446x driver
     Copyright (c) 2019
     Started Jun 22, 2019
-    Updated Jun 23, 2019
+    Updated Jun 29, 2019
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -26,7 +26,7 @@ OBJ
 
     cfg     : "core.con.boardcfg.flip"
     ser     : "com.serial.terminal"
-    rf      : "wireless.transceiver.si4463.spi"
+    rf      : "wireless.transceiver.si446x.spi"
     time    : "time"
 
 VAR

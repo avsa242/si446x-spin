@@ -1,11 +1,11 @@
 {
     --------------------------------------------
-    Filename: wireless.transceiver.si4463.spi.spin
+    Filename: wireless.transceiver.si446x.spi.spin
     Author: Jesse Burt
     Description: Driver for Silicon Labs Si446x series transceivers
     Copyright (c) 2019
     Started Jun 22, 2019
-    Updated Jun 23, 2019
+    Updated Jun 29, 2019
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -52,7 +52,7 @@ VAR
 OBJ
 
     spi : "com.spi.4w"                                             'PASM SPI Driver
-    core: "core.con.si4463"
+    core: "core.con.si446x"
     time: "time"
 
 PUB Null

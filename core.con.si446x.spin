@@ -1,11 +1,11 @@
 {
     --------------------------------------------
-    Filename: core.con.si4463.spin
+    Filename: core.con.si446x.spin
     Author: Jesse Burt
     Description: Low-level constants
     Copyright (c) 2019
     Started Jun 22, 2019
-    Updated Jun 23, 2019
+    Updated Jun 30, 2019
     See end of file for terms of use.
     --------------------------------------------
 }
