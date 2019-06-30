@@ -207,13 +207,13 @@ PUB Preamble(bytes) | tmp
 '   Any other value polls the chip and returns the current setting
 '   NOTE: 0 effectively disables transmitting the preamble. In this case, the sync word will be the first
 '       transmitted field.
-    getProperty(core#GROUP_PREAMBLE, 1, 0, @tmp)
+    getProperty(core#GROUP_PREAMBLE, 1, core#PREAMBLE_TX_LENGTH, @tmp)
     case bytes
         0..255:
         OTHER:
-            return @tmp
+            return tmp
 
-    setProperty(core#GROUP_PREAMBLE, 1, 0, @bytes)
+    setProperty(core#GROUP_PREAMBLE, 1, core#PREAMBLE_TX_LENGTH, @bytes)
 
 PUB NoOp
 
@@ -272,7 +272,21 @@ PRI getProperty(group, nr_props, start_prop, buff_addr) | tmp[4], i
     tmp.byte[0] := group
     tmp.byte[1] := nr_props
     tmp.byte[2] := start_prop
-    readReg(core#GET_PROPERTY, nr_props, @tmp)
+'    readReg(core#GET_PROPERTY, nr_props, buff_addr)
+    if clearToSend(DESELECT_AFTER) == CLEAR
+        outa[_CS] := 0
+        spi.SHIFTOUT (_MOSI, _SCK, core#MOSI_BITORDER, 8, core#GET_PROPERTY)
+        repeat i from 0 to 2
+            spi.SHIFTOUT (_MOSI, _SCK, core#MOSI_BITORDER, 8, tmp.byte[i])
+        outa[_CS] := 1
+        result := clearToSend(NO_DESELECT_AFTER)
+        if result == CLEAR
+            repeat i from 0 to nr_props-1
+                byte[buff_addr][i] := spi.SHIFTIN (_MISO, _SCK, core#MISO_BITORDER, 8)
+            outa[_CS] := 1
+        else
+            outa[_CS] := 1
+            return $E000_0002
 
 PRI setProperty(group, nr_props, start_prop, buff_addr) | tmp[4], i
 
@@ -286,7 +300,7 @@ PRI setProperty(group, nr_props, start_prop, buff_addr) | tmp[4], i
 PRI readReg(reg, nr_bytes, buff_addr) | tmp, i
 
     case reg
-        core#GET_PROPERTY:
+{        core#GET_PROPERTY:
             if clearToSend(DESELECT_AFTER) == CLEAR
                 outa[_CS] := 0
                 spi.SHIFTOUT (_MOSI, _SCK, core#MOSI_BITORDER, 8, reg)
@@ -301,7 +315,7 @@ PRI readReg(reg, nr_bytes, buff_addr) | tmp, i
                 else
                     outa[_CS] := 1
                     return $E000_0002
-
+}
         core#GET_INT_STATUS:
             result := clearToSend(DESELECT_AFTER)
             if result == CLEAR
@@ -364,7 +378,7 @@ PRI readReg(reg, nr_bytes, buff_addr) | tmp, i
 PRI writeReg(reg, nr_bytes, buf_addr) | i, tmp[3]
 ' Write nr_bytes to register 'reg' stored at buf_addr
     result := clearToSend(DESELECT_AFTER)
-    if result
+    if result == CLEAR
         outa[_CS] := 0
         spi.SHIFTOUT(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg)
     
@@ -374,6 +388,7 @@ PRI writeReg(reg, nr_bytes, buf_addr) | i, tmp[3]
                     spi.SHIFTOUT(_MOSI, _SCK, core#MOSI_BITORDER, 8, byte[buf_addr][i])
             OTHER:
         outa[_CS] := 1
+        return
     else
         return $E000_0000
 

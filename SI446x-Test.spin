@@ -48,9 +48,15 @@ PUB Main | tmp[2], i, iter
     ser.NewLine
     ser.NewLine
 
+    rf.Preamble (8)
+    ser.Dec ( rf.Preamble (-2))
+    rf.Preamble (16)
+    ser.NewLine
+    ser.Dec ( rf.Preamble (-2))
+'    repeat
     repeat
         tmp := 0
-        ser.Position (0, 4)
+        ser.Position (0, 7)
         ser.Str (string("Interrupts: (iteration "))
         ser.Dec (iter)
         ser.Str (string("/100)", ser#NL))

@@ -165,7 +165,10 @@ CON
             DIV_1               = 0
     GROUP_INT_CTL               = $01
     GROUP_FRR_CTL               = $02
+
     GROUP_PREAMBLE              = $10
+        PREAMBLE_TX_LENGTH      = $00
+
     GROUP_SYNC                  = $11
     GROUP_PKT                   = $12
     GROUP_MODEM                 = $20
