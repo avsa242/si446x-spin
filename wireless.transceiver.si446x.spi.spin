@@ -166,6 +166,7 @@ PUB InterruptStatus(buff_addr) | tmp[2]
     tmp.byte[core#ARG_MODEM_CLR_PEND] := %1111_1111
     tmp.byte[core#ARG_CHIP_CLR_PEND] := %0111_1111
     readReg(core#GET_INT_STATUS, 8, @tmp)
+    longmove(buff_addr, @tmp, 2)
 
 PUB PartID | tmp
 ' Read the Part ID from the device
