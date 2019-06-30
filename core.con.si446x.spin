@@ -150,7 +150,7 @@ CON
 ' Properties
 '   Properties are organized together with related functionality in 'Groups'
 '   Multiple individual properties within a group
-    GROUP_GLOBAL                = $00
+    GROUP_GLOBAL                = $00   'XXX combine group numbers and index numbers into one 16bit num? simpler?
         GLOBAL_CLK_CFG          = $01
         MASK_GLOBAL_CLK_CFG     = $7B
             FLD_CLK_32K_SEL     = 0
@@ -191,7 +191,22 @@ CON
         SYNC_BITS_LSB           = $04
 
     GROUP_PKT                   = $12
+
     GROUP_MODEM                 = $20
+        MODEM_MOD_TYPE          = $00
+        MASK_MODEM_MOD_TYPE     = $FF
+            FLD_MOD_TYPE        = 0
+            FLD_MOD_SOURCE      = 3
+            FLD_TX_DIRECT_MODE_GPIO = 5
+            FLD_TX_DIRECT_MODE_TYPE = 7
+            BITS_MOD_TYPE       = %111
+            BITS_MOD_SOURCE     = %11
+            BITS_TX_DIRECT_MODE_GPIO    = %11
+            MASK_MOD_TYPE       = MASK_MODEM_MOD_TYPE ^ (BITS_MOD_TYPE << FLD_MOD_TYPE)
+            MASK_MOD_SOURCE     = MASK_MODEM_MOD_TYPE ^ (BITS_MOD_SOURCE << FLD_MOD_SOURCE)
+            MASK_TX_DIRECT_MODE_GPIO    = MASK_MODEM_MOD_TYPE ^ (BITS_TX_DIRECT_MODE_GPIO << FLD_TX_DIRECT_MODE_GPIO)
+            MASK_TX_DIRECT_MODE_TYPE    = MASK_MODEM_MOD_TYPE ^ (1 << FLD_TX_DIRECT_MODE_TYPE)
+
     GROUP_MODEM_CHFLT           = $21
     GROUP_PA                    = $22
     GROUP_SYNTH                 = $23

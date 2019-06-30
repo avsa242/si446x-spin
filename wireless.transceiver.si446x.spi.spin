@@ -34,6 +34,14 @@ CON
     FRRMODE_CURRENT_STATE   = 9
     FRRMODE_LATCHED_RSSI    = 10
 
+' Modulation types
+    MOD_CW                  = 0
+    MOD_OOK                 = 1
+    MOD_2FSK                = 2
+    MOD_2GFSK               = 3
+    MOD_4FSK                = 4
+    MOD_4GFSK               = 5
+
 ' Operating states
     STATE_NOCHANGE          = 0
     STATE_SLEEP             = 1
@@ -174,6 +182,18 @@ PUB InterruptStatus(buff_addr) | tmp[2]
     tmp.byte[core#ARG_CHIP_CLR_PEND] := %0111_1111
     readReg(core#GET_INT_STATUS, 8, @tmp)
     longmove(buff_addr, @tmp, 2)
+
+PUB Modulation(type) | tmp
+
+    getProperty(core#GROUP_MODEM, 1, core#MODEM_MOD_TYPE, @tmp)
+    case type
+        MOD_CW, MOD_OOK, MOD_2FSK, MOD_2GFSK, MOD_4FSK, MOD_4GFSK:
+        OTHER:
+            return (tmp & core#BITS_MOD_TYPE)
+
+    tmp &= core#MASK_MOD_TYPE
+    tmp := (tmp | type) & core#MASK_MODEM_MOD_TYPE
+    setProperty(core#GROUP_MODEM, 1, core#MODEM_MOD_TYPE, @tmp)
 
 PUB PartID | tmp
 ' Read the Part ID from the device

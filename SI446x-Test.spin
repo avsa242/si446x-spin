@@ -37,19 +37,9 @@ PUB Main | tmp[2], i, iter
 
     Setup
 
-    rf.SyncWordLen (1)
-    ser.Dec ( rf.SyncWordLen (-2))
-    rf.SyncWordLen (4)
-    ser.NewLine
-    ser.Dec ( rf.SyncWordLen (-2))
-    ser.NewLine
-    
-    ser.Hex (rf.SyncWord (0), 8)
-    rf.SyncWord ($DEADBEEF)
-    ser.NewLine
-    ser.Hex (rf.SyncWord (0), 8)
-    ser.NewLine    
-'    repeat
+    rf.Modulation (rf#MOD_2FSK)
+    ser.Dec (rf.Modulation (-2))
+
     repeat
         tmp := 0
         ser.Position (0, 7)
