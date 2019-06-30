@@ -201,6 +201,20 @@ PUB PowerUp(osc_freq) | tmp[2]
     
     result := writeReg(core#POWER_UP, 6, @tmp)
 
+PUB Preamble(bytes) | tmp
+' Set preamble length, in bytes
+'   Valid values: 0..255
+'   Any other value polls the chip and returns the current setting
+'   NOTE: 0 effectively disables transmitting the preamble. In this case, the sync word will be the first
+'       transmitted field.
+    getProperty(core#GROUP_PREAMBLE, 1, 0, @tmp)
+    case bytes
+        0..255:
+        OTHER:
+            return @tmp
+
+    setProperty(core#GROUP_PREAMBLE, 1, 0, @bytes)
+
 PUB NoOp
 
     return readReg(core#NOOP, 0, @result)
