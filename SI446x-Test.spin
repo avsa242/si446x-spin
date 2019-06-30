@@ -43,28 +43,31 @@ PUB Main | tmp[2], i
 '    ser.NewLine
 '    ser.Hex (rf.State (rf#STATE_SPI_ACTIVE), 8)
 '    ser.NewLine
-    ser.Str (string("STATE: "))
-    State(rf.State (rf#STATE_NOCHANGE))
+'    ser.Str (string("STATE: "))
+'    State(rf.State (rf#STATE_NOCHANGE))
     ser.NewLine
     ser.NewLine
 
-    ser.Str (string("Interrupts: ", ser#NL))
-    rf.InterruptStatus (@tmp)
-    repeat i from 0 to 7
-        ser.Str ((lookupz(i: string("INT_PEND"), string("INT_STATUS"), string("PH_PEND"), string("PH_STATUS"), string("MODEM_PEND"), string("MODEM_STATUS"), string("CHIP_PEND"), string("CHIP_STATUS"))))
-        ser.Str (string(": "))
-        ser.Bin (tmp.byte[i], 8)
-        ser.NewLine
-    ser.NewLine
-'    rf.State (rf#STATE_RX)
-    ser.Str (string("STATE: "))
-    State(rf.State (rf#STATE_NOCHANGE))
-    time.MSleep (1)
-    ser.Str (string(ser#NL, "FIFO: "))
-    rf.RXData (8, @tmp)
-    repeat i from 0 to 7
-        ser.Hex (tmp.byte[i], 2)
-        ser.Char (" ")
+    repeat
+        tmp := 0
+        ser.Position (0, 4)
+        ser.Str (string("Interrupts: ", ser#NL))
+        rf.InterruptStatus (@tmp)
+        repeat i from 0 to 7
+            ser.Str ((lookupz(i: string("INT_PEND"), string("INT_STATUS"), string("PH_PEND"), string("PH_STATUS"), string("MODEM_PEND"), string("MODEM_STATUS"), string("CHIP_PEND"), string("CHIP_STATUS"))))
+            ser.Str (string(": "))
+            ser.Bin (tmp.byte[i], 8)
+            ser.NewLine
+'        ser.NewLine
+    '    rf.State (rf#STATE_RX)
+'        ser.Str (string("STATE: "))
+'        State(rf.State (rf#STATE_NOCHANGE))
+'        ser.Str (string(ser#NL, "FIFO: "))
+'        rf.RXData (8, @tmp)
+'        repeat i from 0 to 7
+'            ser.Hex (tmp.byte[i], 2)
+'            ser.Char (" ")
+        time.MSleep (100)
     Flash (LED, 100)
 
 PUB State(state_num)

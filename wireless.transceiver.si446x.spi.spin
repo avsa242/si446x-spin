@@ -12,6 +12,9 @@
 
 CON
 
+' Clear-to-send status
+    CLEAR                   = $FF
+    NOT_CLEAR               = $00
 
 ' Fast-Response Registers
     FRR_A                   = 0
@@ -266,14 +269,14 @@ PRI readReg(reg, nr_bytes, buff_addr) | tmp, i
 
     case reg
         core#GET_PROPERTY:
-            if clearToSend(DESELECT_AFTER)
+            if clearToSend(DESELECT_AFTER) == CLEAR
                 outa[_CS] := 0
                 spi.SHIFTOUT (_MOSI, _SCK, core#MOSI_BITORDER, 8, reg)
                 repeat i from 0 to 2
                     spi.SHIFTOUT (_MOSI, _SCK, core#MOSI_BITORDER, 8, byte[buff_addr][i])
                 outa[_CS] := 1
                 result := clearToSend(NO_DESELECT_AFTER)
-                if result
+                if result == CLEAR
                     repeat i from 0 to nr_bytes-1
                         byte[buff_addr][i] := spi.SHIFTIN (_MISO, _SCK, core#MISO_BITORDER, 8)
                     outa[_CS] := 1
@@ -282,14 +285,14 @@ PRI readReg(reg, nr_bytes, buff_addr) | tmp, i
                     return $E000_0002
 
         core#GET_INT_STATUS:
-            if clearToSend(DESELECT_AFTER)
+            if clearToSend(DESELECT_AFTER) == CLEAR
                 outa[_CS] := 0
                 spi.SHIFTOUT (_MOSI, _SCK, core#MOSI_BITORDER, 8, reg)
                 repeat i from 0 to 2
                     spi.SHIFTOUT (_MOSI, _SCK, core#MOSI_BITORDER, 8, byte[buff_addr][i])
                 outa[_CS] := 1
                 result := clearToSend(NO_DESELECT_AFTER)
-                if result
+                if result == CLEAR
                     repeat i from 0 to nr_bytes-1
                         byte[buff_addr][i] := spi.SHIFTIN (_MISO, _SCK, core#MISO_BITORDER, 8)
                     outa[_CS] := 1
@@ -298,13 +301,13 @@ PRI readReg(reg, nr_bytes, buff_addr) | tmp, i
                     return $E000_0003
 
         $01..$02, $10..$11, $13..$17, $1A, $20..$23, $31..$34, $36..$37, $44:
-            if clearToSend(DESELECT_AFTER)
+            if clearToSend(DESELECT_AFTER) == CLEAR
                 outa[_CS] := 0
                 spi.SHIFTOUT (_MOSI, _SCK, core#MOSI_BITORDER, 8, reg)
                 outa[_CS] := 1
 
                 result := clearToSend(NO_DESELECT_AFTER)
-                if result
+                if result == CLEAR
                     repeat i from 0 to nr_bytes-1
                         byte[buff_addr][i] := spi.SHIFTIN (_MISO, _SCK, core#MISO_BITORDER, 8)
                     outa[_CS] := 1
