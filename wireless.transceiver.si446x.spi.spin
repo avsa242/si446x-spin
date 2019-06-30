@@ -87,6 +87,10 @@ PUB Stop
 
     spi.stop
 
+PUB ClearInts
+
+    readReg(core#GET_INT_STATUS, 0, @result)
+
 PUB ClkTest(clkdiv)| tmp[2]
 ' Test system clock output, divided by clkdiv
 '   Valid values: 1, 2, 3, 7_5 (7.5), 10, 15, 30
@@ -285,12 +289,20 @@ PRI readReg(reg, nr_bytes, buff_addr) | tmp, i
                     return $E000_0002
 
         core#GET_INT_STATUS:
-            if clearToSend(DESELECT_AFTER) == CLEAR
+            result := clearToSend(DESELECT_AFTER)
+            if result == CLEAR
                 outa[_CS] := 0
                 spi.SHIFTOUT (_MOSI, _SCK, core#MOSI_BITORDER, 8, reg)
-                repeat i from 0 to 2
-                    spi.SHIFTOUT (_MOSI, _SCK, core#MOSI_BITORDER, 8, byte[buff_addr][i])
-                outa[_CS] := 1
+                case nr_bytes
+                    0:              'Clear interrupts if no args given
+                        outa[_CS] := 1
+                        return
+                    OTHER:
+                        repeat i from 0 to 2
+                            spi.SHIFTOUT (_MOSI, _SCK, core#MOSI_BITORDER, 8, byte[buff_addr][i])
+                            byte[buff_addr][i] := 0
+                        outa[_CS] := 1
+
                 result := clearToSend(NO_DESELECT_AFTER)
                 if result == CLEAR
                     repeat i from 0 to nr_bytes-1
