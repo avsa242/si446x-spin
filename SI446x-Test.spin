@@ -37,26 +37,28 @@ PUB Main | tmp[2], i
 
     Setup
 
-    ser.Hex (rf.PowerUp(30_000_000), 8)
-    ser.NewLine
-    ser.Hex (rf.ClkTest(1), 8)
-    ser.NewLine
-    ser.Hex (rf.State (rf#STATE_SPI_ACTIVE), 8)
-    ser.NewLine
+'    ser.Hex (rf.PowerUp(30_000_000), 8)
+'    ser.NewLine
+'    ser.Hex (rf.ClkTest(1), 8)
+'    ser.NewLine
+'    ser.Hex (rf.State (rf#STATE_SPI_ACTIVE), 8)
+'    ser.NewLine
     ser.Str (string("STATE: "))
-    ser.Dec (rf.State (rf#STATE_NOCHANGE))
+    State(rf.State (rf#STATE_NOCHANGE))
     ser.NewLine
     ser.NewLine
 
     ser.Str (string("Interrupts: ", ser#NL))
     rf.InterruptStatus (@tmp)
     repeat i from 0 to 7
+        ser.Str ((lookupz(i: string("INT_PEND"), string("INT_STATUS"), string("PH_PEND"), string("PH_STATUS"), string("MODEM_PEND"), string("MODEM_STATUS"), string("CHIP_PEND"), string("CHIP_STATUS"))))
+        ser.Str (string(": "))
         ser.Bin (tmp.byte[i], 8)
         ser.NewLine
     ser.NewLine
-    rf.State (rf#STATE_RX)
+'    rf.State (rf#STATE_RX)
     ser.Str (string("STATE: "))
-    ser.Dec (rf.State (rf#STATE_NOCHANGE))
+    State(rf.State (rf#STATE_NOCHANGE))
     time.MSleep (1)
     ser.Str (string(ser#NL, "FIFO: "))
     rf.RXData (8, @tmp)
@@ -64,6 +66,10 @@ PUB Main | tmp[2], i
         ser.Hex (tmp.byte[i], 2)
         ser.Char (" ")
     Flash (LED, 100)
+
+PUB State(state_num)
+
+    ser.Str (lookupz(state_num: string("STATE_NOCHANGE"), string("STATE_SLEEP"), string("STATE_SPI_ACTIVE"), string("STATE_READY"), string("STATE_TX_TUNE"), string("STATE_RX_TUNE"), string("STATE_TX"), string("STATE_RX")))
 
 PUB Setup
 

@@ -28,7 +28,7 @@ CON
 
     NOOP                        = $00
     PART_INFO                   = $01
-        REPL_CHIPREV            = 0
+        REPL_CHIPREV            = 0             ' Byte Index
         REPL_PARTMSB            = 1
         REPL_PARTLSB            = 2
         REPL_PBUILD             = 3

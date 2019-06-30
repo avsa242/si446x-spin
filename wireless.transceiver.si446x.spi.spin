@@ -74,7 +74,8 @@ PUB Startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN, SCK_DELAY, SCK_CPOL): okay
 
             outa[_CS] := 1
             dira[_CS] := 1
-            if lookdown(PartID: $4460, $4461, $4463, $4464)
+'            if lookdown(PartID: $4460, $4461, $4463, $4464)
+            if PowerUp(core#OSC_FREQ_NOMINAL) == $FF
                 return okay
 
     return FALSE                                                'If we got here, something went wrong
@@ -173,7 +174,9 @@ PUB PartID | tmp
     return (tmp.byte[core#REPL_PARTMSB] << 8) | tmp.byte[core#REPL_PARTLSB]
 
 PUB PowerUp(osc_freq) | tmp[2]
-' Perform device powerup, and specify oscillator frequency
+' Perform device powerup, and specify oscillator frequency, in Hz
+'   Valid values: 25_000_000 to 32_000_000
+'   Any other value sets the nominal 30_000_000
     tmp.byte[core#ARG_BOOT_OPTIONS] := core#EZRADIO_PRO
     tmp.byte[core#ARG_XTAL_OPTIONS] := core#XTAL
     case osc_freq
@@ -230,9 +233,13 @@ PRI clearToSend(deselect)
 '       NO_DESELECT_AFTER (0): Don't raise CS after checking - needed for reads where the data read must be in the same CS "frame" as the
 '                               CTS check.
 '   Returns: TRUE if clear to send, FALSE otherwise
-    outa[_CS] := 0
-    spi.SHIFTOUT (_MOSI, _SCK, core#MOSI_BITORDER, 8, core#READ_CMD_BUFF)
-    result := spi.SHIFTIN (_MISO, _SCK, core#MISO_BITORDER, 8)
+    repeat
+        outa[_CS] := 0
+        spi.SHIFTOUT (_MOSI, _SCK, core#MOSI_BITORDER, 8, core#READ_CMD_BUFF)
+        result := spi.SHIFTIN (_MISO, _SCK, core#MISO_BITORDER, 8)
+        if result <> $FF
+            outa[_CS] := 1
+    until result == $FF
     if deselect
         outa[_CS] := 1
 
@@ -326,7 +333,7 @@ PRI readReg(reg, nr_bytes, buff_addr) | tmp, i
 
 PRI writeReg(reg, nr_bytes, buf_addr) | i, tmp[3]
 ' Write nr_bytes to register 'reg' stored at buf_addr
-    repeat until result := clearToSend(DESELECT_AFTER)
+    result := clearToSend(DESELECT_AFTER)
     if result
         outa[_CS] := 0
         spi.SHIFTOUT(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg)
