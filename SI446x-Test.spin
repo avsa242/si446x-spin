@@ -37,22 +37,18 @@ PUB Main | tmp[2], i, iter
 
     Setup
 
-'    ser.Hex (rf.PowerUp(30_000_000), 8)
-'    ser.NewLine
-'    ser.Hex (rf.ClkTest(1), 8)
-'    ser.NewLine
-'    ser.Hex (rf.State (rf#STATE_SPI_ACTIVE), 8)
-'    ser.NewLine
-'    ser.Str (string("STATE: "))
-'    State(rf.State (rf#STATE_NOCHANGE))
+    rf.SyncWordLen (1)
+    ser.Dec ( rf.SyncWordLen (-2))
+    rf.SyncWordLen (4)
     ser.NewLine
+    ser.Dec ( rf.SyncWordLen (-2))
     ser.NewLine
-
-    rf.Preamble (8)
-    ser.Dec ( rf.Preamble (-2))
-    rf.Preamble (16)
+    
+    ser.Hex (rf.SyncWord (0), 8)
+    rf.SyncWord ($DEADBEEF)
     ser.NewLine
-    ser.Dec ( rf.Preamble (-2))
+    ser.Hex (rf.SyncWord (0), 8)
+    ser.NewLine    
 '    repeat
     repeat
         tmp := 0

@@ -170,6 +170,26 @@ CON
         PREAMBLE_TX_LENGTH      = $00
 
     GROUP_SYNC                  = $11
+        SYNC_CONFIG             = $00
+        MASK_SYNC_CONFIG        = $FF
+            FLD_LENGTH          = 0
+            FLD_MANCH           = 2
+            FLD_4FSK            = 3
+            FLD_RX_ERRORS       = 4
+            FLD_SKIP_TX         = 7
+            BITS_LENGTH         = %11
+            BITS_RX_ERRORS      = %111
+            MASK_LENGTH         = MASK_SYNC_CONFIG ^ (BITS_LENGTH << FLD_LENGTH)
+            MASK_MACH           = MASK_SYNC_CONFIG ^ (1 << FLD_MANCH)
+            MASK_4FSK           = MASK_SYNC_CONFIG ^ (1 << FLD_4FSK)
+            MASK_RX_ERRORS      = MASK_SYNC_CONFIG ^ (BITS_RX_ERRORS << FLD_RX_ERRORS)
+            MASK_SKIP_TX        = MASK_SYNC_CONFIG ^ (1 << FLD_SKIP_TX)
+
+        SYNC_BITS_MSB           = $01
+        SYNC_BITS_MMB           = $02
+        SYNC_BITS_LMB           = $03
+        SYNC_BITS_LSB           = $04
+
     GROUP_PKT                   = $12
     GROUP_MODEM                 = $20
     GROUP_MODEM_CHFLT           = $21

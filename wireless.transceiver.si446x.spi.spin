@@ -248,6 +248,39 @@ PUB State(new_state) | tmp
 
     result := writeReg(core#CHANGE_STATE, 1, @new_state)
 
+PUB SyncWord(syncbits) | tmp
+' Set sync word for TX and RX operation
+'   Valid values: $00_00_00_01..$FF_FF_FF_FF
+'   Any other value polls the chip and returns the current setting
+    getProperty(core#GROUP_SYNC, 4, core#SYNC_BITS_MSB, @tmp)
+    case syncbits
+        $00000001..$7FFFFFFF, $80000000..$FFFFFFFF:
+            syncbits := swap(syncbits)
+        OTHER:          ' Disallow all zeroes for sync word to accomodate querying
+            return swap(tmp)
+
+    result := setProperty(core#GROUP_SYNC, 4, core#SYNC_BITS_MSB, @syncbits)
+
+PUB SyncWordLen(length) | tmp
+' Set sync word length, in bytes
+'   Valid values: 1..4
+'   Any other value polls the chip and returns the current setting
+    getProperty(core#GROUP_SYNC, 1, core#SYNC_CONFIG, @tmp)
+    case length
+        1..4:
+            length -= 1
+        OTHER:
+            return (tmp & core#BITS_LENGTH) + 1
+
+    tmp &= core#MASK_LENGTH
+    tmp := (tmp | length) & core#MASK_SYNC_CONFIG
+    result := setProperty(core#GROUP_SYNC, 1, core#SYNC_CONFIG, @tmp)
+
+PRI swap(swp_long) | i
+
+    repeat i from 0 to 3
+        result.byte[i] := swp_long.byte[3-i]
+
 PRI clearToSend(deselect)
 ' Check the CTS (Clear-to-Send) status from the device
 '   Valid values:
