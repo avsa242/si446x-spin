@@ -18,6 +18,7 @@ CON
     MOSI_BITORDER               = 5             ' MSBFIRST
     MISO_BITORDER               = 0             ' MSBPRE
 
+    OSC_FREQ_NOMINAL            = 30_000_000    ' 30MHz nominal oscillator freq
     TPOR                        = 5             ' tPOR - Power-On Reset time
 
     NOT_CLEAR                   = $00

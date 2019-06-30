@@ -326,7 +326,7 @@ PRI readReg(reg, nr_bytes, buff_addr) | tmp, i
 
 PRI writeReg(reg, nr_bytes, buf_addr) | i, tmp[3]
 ' Write nr_bytes to register 'reg' stored at buf_addr
-    result := clearToSend(DESELECT_AFTER)
+    repeat until result := clearToSend(DESELECT_AFTER)
     if result
         outa[_CS] := 0
         spi.SHIFTOUT(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg)
