@@ -21,9 +21,9 @@ CON
     MISO_PIN    = 5
 
     COL_REG     = 0
-    COL_SET     = 25
-    COL_READ    = 37
-    COL_PF      = 52
+    COL_SET     = COL_REG+25
+    COL_READ    = COL_SET+17
+    COL_PF      = COL_READ+17
 
     LED         = cfg#LED1
 
@@ -44,6 +44,7 @@ PUB Main
     Setup
     _row := 1
 
+    SYNC_BITS (1)
     PREAMBLE_TX_LENGTH (1)
     MODEM_MOD_TYPE (1)
     FRR_D (1)
@@ -54,6 +55,16 @@ PUB Main
     ser.Str (string("Total failures: "))
     ser.Dec (_fails)
     Flash (cfg#LED1, 100)
+
+PUB SYNC_BITS(reps) | tmp, read
+
+'    _expanded := TRUE
+    _row++
+    repeat reps
+        repeat tmp from $01_01_01_01 TO $7F_FF_FF_FF step $01_01_01_01
+            rf.SyncWord (tmp)
+            read := rf.SyncWord (0)
+            Message (string("SYNC_BITS"), tmp, read)
 
 PUB PREAMBLE_TX_LENGTH(reps) | tmp, read
 
@@ -141,10 +152,12 @@ PUB Message(field, arg1, arg2)
             ser.Position (COL_SET, _row)
             ser.Str (string("SET: "))
             ser.Dec (arg1)
+            ser.Chars (32, 10)
 
             ser.Position (COL_READ, _row)
             ser.Str (string("READ: "))
             ser.Dec (arg2)
+            ser.Chars (32, 10)
 
             ser.Position (COL_PF, _row)
             PassFail (arg1 == arg2)
