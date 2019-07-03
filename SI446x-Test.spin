@@ -44,6 +44,7 @@ PUB Main
     Setup
     _row := 1
 
+    MODEM_MOD_TYPE (1)
     FRR_D (1)
     FRR_C (1)
     FRR_B (1)
@@ -52,6 +53,16 @@ PUB Main
     ser.Str (string("Total failures: "))
     ser.Dec (_fails)
     Flash (cfg#LED1, 100)
+
+PUB MODEM_MOD_TYPE(reps) | tmp, read
+
+'    _expanded := TRUE
+    _row++
+    repeat reps
+        repeat tmp from 0 to 5
+            rf.Modulation (tmp)
+            read := rf.Modulation (-2)
+            Message (string("MODEM_MOD_TYPE"), tmp, read)
 
 PUB FRR_D(reps) | tmp, read
 
