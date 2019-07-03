@@ -228,6 +228,7 @@ PUB Preamble(bytes) | tmp
 '   Any other value polls the chip and returns the current setting
 '   NOTE: 0 effectively disables transmitting the preamble. In this case, the sync word will be the first
 '       transmitted field.
+    tmp := 0
     getProperty(core#GROUP_PREAMBLE, 1, core#PREAMBLE_TX_LENGTH, @tmp)
     case bytes
         0..255:
@@ -327,19 +328,19 @@ PRI getProperty (group, nr_props, start_prop, buff_addr) | tmp, i
     tmp.byte[1] := group
     tmp.byte[2] := nr_props
     tmp.byte[3] := start_prop
-    clearToSend (1)
+    clearToSend (DESELECT_AFTER)
     outa[_CS] := 0
     repeat i from 0 to 3
         spi.SHIFTOUT (_MOSI, _SCK, core#MOSI_BITORDER, 8, tmp.byte[i])
     outa[_CS] := 1
-    clearToSend (0)
-    repeat i from 0 to nr_props-1
-        byte[buff_addr][(nr_props-1)-i] := spi.SHIFTIN (_MISO, _SCK, core#MISO_BITORDER, 8)
+    clearToSend (NO_DESELECT_AFTER) ' Check CTS, but leave the chip selected afterwards, because
+    repeat i from nr_props-1 to 0   '   the data needs to be read in the same transaction as the check.
+        byte[buff_addr][i] := spi.SHIFTIN (_MISO, _SCK, core#MISO_BITORDER, 8)
     outa[_cs] := 1
 
-PRI setproperty (group, nr_props, start_prop, buff_addr) | tmp, i
+PRI setProperty (group, nr_props, start_prop, buff_addr) | tmp, i
 
-    clearToSend (1)
+    clearToSend (DESELECT_AFTER)
     tmp.byte[0] := core#SET_PROPERTY
     tmp.byte[1] := group
     tmp.byte[2] := nr_props
@@ -350,7 +351,7 @@ PRI setproperty (group, nr_props, start_prop, buff_addr) | tmp, i
     repeat i from nr_props-1 to 0
         spi.SHIFTOUT (_MOSI, _SCK, core#MOSI_BITORDER, 8, byte[buff_addr][i])
     outa[_CS] := 1
-    clearToSend (1)
+    clearToSend (DESELECT_AFTER)
 
 PRI readReg(reg, nr_bytes, buff_addr) | tmp, i
 

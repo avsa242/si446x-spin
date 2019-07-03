@@ -44,6 +44,7 @@ PUB Main
     Setup
     _row := 1
 
+    SYNC_CONFIG (1)
     SYNC_BITS (1)
     PREAMBLE_TX_LENGTH (1)
     MODEM_MOD_TYPE (1)
@@ -56,9 +57,19 @@ PUB Main
     ser.Dec (_fails)
     Flash (cfg#LED1, 100)
 
-PUB SYNC_BITS(reps) | tmp, read
+PUB SYNC_CONFIG(reps) | tmp, read
 
 '    _expanded := TRUE
+    _row++
+    repeat reps
+        repeat tmp from 1 to 4
+            rf.SyncWordLen (tmp)
+            read := rf.SyncWordLen (-2)
+            Message (string("SYNC_CONFIG"), tmp, read)
+
+PUB SYNC_BITS(reps) | tmp, read
+
+'    _expanded := FALSE
     _row++
     repeat reps
         repeat tmp from $01_01_01_01 TO $7F_FF_FF_FF step $01_01_01_01
