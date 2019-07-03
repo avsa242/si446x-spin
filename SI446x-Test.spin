@@ -44,6 +44,7 @@ PUB Main
     Setup
     _row := 1
 
+    PREAMBLE_TX_LENGTH (1)
     MODEM_MOD_TYPE (1)
     FRR_D (1)
     FRR_C (1)
@@ -53,6 +54,16 @@ PUB Main
     ser.Str (string("Total failures: "))
     ser.Dec (_fails)
     Flash (cfg#LED1, 100)
+
+PUB PREAMBLE_TX_LENGTH(reps) | tmp, read
+
+'    _expanded := TRUE
+    _row++
+    repeat reps
+        repeat tmp from 0 to 255
+            rf.Preamble (tmp)
+            read := rf.Preamble (-2)
+            Message (string("PREAMBLE_TX_LENGTH"), tmp, read)
 
 PUB MODEM_MOD_TYPE(reps) | tmp, read
 
