@@ -2,10 +2,10 @@
     --------------------------------------------
     Filename: SI446x-Test.spin
     Author: Jesse Burt
-    Description: Test of the Si446x driver
+    Description: Test object for the Si446x driver
     Copyright (c) 2019
     Started Jun 22, 2019
-    Updated Jun 29, 2019
+    Updated Jul 3, 2019
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -20,77 +20,109 @@ CON
     MOSI_PIN    = 4
     MISO_PIN    = 5
 
+    COL_REG     = 0
+    COL_SET     = 25
+    COL_READ    = 37
+    COL_PF      = 52
+
     LED         = cfg#LED1
 
 OBJ
 
-    cfg     : "core.con.boardcfg.flip"
-    ser     : "com.serial.terminal"
-    rf      : "wireless.transceiver.si446x.spi"
-    time    : "time"
+    cfg : "core.con.boardcfg.flip"
+    ser : "com.serial.terminal"
+    time: "time"
+    rf  : "wireless.transceiver.si446x.spi"
 
 VAR
 
-    byte _ser_cog, _rf_cog
+    long _fails, _expanded
+    byte _ser_cog, _row
 
-PUB Main | tmp[2], i, iter
+PUB Main
 
     Setup
+    _row := 1
 
-    rf.Modulation (rf#MOD_2FSK)
-    ser.Dec (rf.Modulation (-2))
+    FRR_A (1)
+    ser.NewLine
+    ser.Str (string("Total failures: "))
+    ser.Dec (_fails)
+    Flash (cfg#LED1, 100)
 
-    repeat
-        tmp := 0
-        ser.Position (0, 7)
-        ser.Str (string("Interrupts: (iteration "))
-        ser.Dec (iter)
-        ser.Str (string("/100)", ser#NL))
-        rf.InterruptStatus (@tmp)
-        repeat i from 0 to 7
-            ser.Str ((lookupz(i: string("INT_PEND"), string("INT_STATUS"), string("PH_PEND"), string("PH_STATUS"), string("MODEM_PEND"), string("MODEM_STATUS"), string("CHIP_PEND"), string("CHIP_STATUS"))))
-            ser.Str (string(": "))
-            ser.Bin (tmp.byte[i], 8)
+PUB FRR_A(reps) | tmp, read
+
+    _expanded := TRUE
+    _row++
+    repeat reps
+        repeat tmp from 0 to 7
+            rf.FastRespRegCfg (rf#FRR_A, tmp)
+            read := rf.FastRespRegCfg (rf#FRR_A, -2)
+            Message (string("FRR_A"), tmp, read)
+
+PUB Message(field, arg1, arg2)
+
+    case _expanded
+        TRUE:
+            ser.PositionX (COL_REG)
+            ser.Str (field)
+
+            ser.PositionX (COL_SET)
+            ser.Str (string("SET: "))
+            ser.Dec (arg1)
+
+            ser.PositionX (COL_READ)
+            ser.Str (string("READ: "))
+            ser.Dec (arg2)
+            ser.Chars (32, 3)
+            ser.PositionX (COL_PF)
+            PassFail (arg1 == arg2)
             ser.NewLine
-'        ser.NewLine
-    '    rf.State (rf#STATE_RX)
-'        ser.Str (string("STATE: "))
-'        State(rf.State (rf#STATE_NOCHANGE))
-'        ser.Str (string(ser#NL, "FIFO: "))
-'        rf.RXData (8, @tmp)
-'        repeat i from 0 to 7
-'            ser.Hex (tmp.byte[i], 2)
-'            ser.Char (" ")
-        time.MSleep (100)
-        iter++
-        if iter > 99
-            rf.ClearInts
-            iter := 0
-    Flash (LED, 100)
 
-PUB State(state_num)
+        FALSE:
+            ser.Position (COL_REG, _row)
+            ser.Str (field)
 
-    ser.Str (lookupz(state_num: string("STATE_NOCHANGE"), string("STATE_SLEEP"), string("STATE_SPI_ACTIVE"), string("STATE_READY"), string("STATE_TX_TUNE"), string("STATE_RX_TUNE"), string("STATE_TX"), string("STATE_RX")))
+            ser.Position (COL_SET, _row)
+            ser.Str (string("SET: "))
+            ser.Dec (arg1)
+
+            ser.Position (COL_READ, _row)
+            ser.Str (string("READ: "))
+            ser.Dec (arg2)
+
+            ser.Position (COL_PF, _row)
+            PassFail (arg1 == arg2)
+            ser.NewLine
+        OTHER:
+            ser.Str (string("DEADBEEF"))
+
+PUB PassFail(num)
+
+    case num
+        0:
+            ser.Str (string("FAIL"))
+            _fails++
+
+        -1:
+            ser.Str (string("PASS"))
+
+        OTHER:
+            ser.Str (string("???"))
 
 PUB Setup
 
     repeat until _ser_cog := ser.Start (115_200)
     ser.Clear
     ser.Str(string("Serial terminal started", ser#NL))
-    if _rf_cog := rf.Start (CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN)
-        ser.Str(string("SI446x driver started (Si"))
-        ser.Hex (rf.PartID, 4)
-        ser.Str (string(" found)", ser#NL))
+    if rf.Start (CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN)
+        ser.Str (string("SI446x driver started", ser#NL))
     else
-        ser.Str(string("SI446x driver failed to start", ser#NL))
-        Stop
+        ser.Str (string("SI446x driver failed to start - halting", ser#NL))
+        rf.Stop
+        time.MSleep (500)
+        ser.Stop
         Flash (LED, 500)
-
-PUB Stop
-
-    time.MSleep (5)
-    ser.Stop
-    rf.Stop
 
 PUB Flash(pin, delay_ms)
 
@@ -98,6 +130,7 @@ PUB Flash(pin, delay_ms)
     repeat
         !outa[pin]
         time.MSleep (delay_ms)
+
 DAT
 {
     --------------------------------------------------------------------------------------------------------

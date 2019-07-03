@@ -5,7 +5,7 @@
     Description: Driver for Silicon Labs Si446x series transceivers
     Copyright (c) 2019
     Started Jun 22, 2019
-    Updated Jun 29, 2019
+    Updated Jul 3, 2019
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -128,17 +128,18 @@ PUB FastRespRegCfg(reg, mode) | tmp
 '   Valid values:
 '       reg: FRR_A (0), FRR_B (1), FRR_C (2), FRR_D (3)
 '       mode:
-'           DISABLED (0): Disabled. Will always read back 0.
-'           INT_STATUS (1): Global status
-'           INT_PEND (2): Global interrupt pending
-'           INT_PH_STATUS (3): Packet Handler status
-'           INT_PH_PEND (4): Packet Handler interrupt pending
-'           INT_MODEM_STATUS (5): Modem status
-'           INT_MODEM_PEND (6): Modem interrupt pending
-'           INT_CHIP_STATUS (7): Chip status
-'           INT_CHIP_PEND (8): Chip status interrupt pending
-'           CURRENT_STATE (9): Current state
-'           LATCHED_RSSI (10): Latched RSSI value
+'           FRRMODE_DISABLED (0): Disabled. Will always read back 0.
+'           FRRMODE_INT_STATUS (1): Global status
+'           FRRMODE_INT_PEND (2): Global interrupt pending
+'           FRRMODE_INT_PH_STATUS (3): Packet Handler status
+'           FRRMODE_INT_PH_PEND (4): Packet Handler interrupt pending
+'           FRRMODE_INT_MODEM_STATUS (5): Modem status
+'           FRRMODE_INT_MODEM_PEND (6): Modem interrupt pending
+'           FRRMODE_INT_CHIP_STATUS (7): Chip status
+'           FRRMODE_INT_CHIP_PEND (8): Chip status interrupt pending
+'           FRRMODE_CURRENT_STATE (9): Current state
+'           FRRMODE_LATCHED_RSSI (10): Latched RSSI value
+    tmp := 0
     case reg
         FRR_A..FRR_D:
         OTHER:
@@ -151,7 +152,7 @@ PUB FastRespRegCfg(reg, mode) | tmp
         OTHER:
             return tmp
 
-    setProperty(core#GROUP_FRR_CTL, 1, reg, mode)
+    setProperty(core#GROUP_FRR_CTL, 1, reg, @mode)
 
 PUB FIFORXBytes | tmp
 ' Number of bytes in the RX FIFO
@@ -320,35 +321,36 @@ PRI clearToSend(deselect)
 
     return' (result == $FF)
 
-PRI getProperty(group, nr_props, start_prop, buff_addr) | tmp[4], i
+PRI getProperty (group, nr_props, start_prop, buff_addr) | tmp, i
 
-    tmp.byte[0] := group
-    tmp.byte[1] := nr_props
-    tmp.byte[2] := start_prop
-'    readReg(core#GET_PROPERTY, nr_props, buff_addr)
-    if clearToSend(DESELECT_AFTER) == CLEAR
-        outa[_CS] := 0
-        spi.SHIFTOUT (_MOSI, _SCK, core#MOSI_BITORDER, 8, core#GET_PROPERTY)
-        repeat i from 0 to 2
-            spi.SHIFTOUT (_MOSI, _SCK, core#MOSI_BITORDER, 8, tmp.byte[i])
-        outa[_CS] := 1
-        result := clearToSend(NO_DESELECT_AFTER)
-        if result == CLEAR
-            repeat i from 0 to nr_props-1
-                byte[buff_addr][i] := spi.SHIFTIN (_MISO, _SCK, core#MISO_BITORDER, 8)
-            outa[_CS] := 1
-        else
-            outa[_CS] := 1
-            return $E000_0002
-
-PRI setProperty(group, nr_props, start_prop, buff_addr) | tmp[4], i
-
-    tmp.byte[0] := group
-    tmp.byte[1] := nr_props
-    tmp.byte[2] := start_prop
+    tmp.byte[0] := core#GET_PROPERTY
+    tmp.byte[1] := group
+    tmp.byte[2] := nr_props
+    tmp.byte[3] := start_prop
+    clearToSend (1)
+    outa[_CS] := 0
+    repeat i from 0 to 3
+        spi.SHIFTOUT (_MOSI, _SCK, core#MOSI_BITORDER, 8, tmp.byte[i])
+    outa[_CS] := 1
+    clearToSend (0)
     repeat i from 0 to nr_props-1
-        tmp.byte[3+i] := byte[buff_addr][i]
-    result := writeReg(core#SET_PROPERTY, 3+nr_props, @tmp)
+        byte[buff_addr][(nr_props-1)-i] := spi.SHIFTIN (_MISO, _SCK, core#MISO_BITORDER, 8)
+    outa[_cs] := 1
+
+PRI setproperty (group, nr_props, start_prop, buff_addr) | tmp, i
+
+    clearToSend (1)
+    tmp.byte[0] := core#SET_PROPERTY
+    tmp.byte[1] := group
+    tmp.byte[2] := nr_props
+    tmp.byte[3] := start_prop
+    outa[_CS] := 0
+    repeat i from 0 to 3
+        spi.SHIFTOUT (_MOSI, _SCK, core#MOSI_BITORDER, 8, tmp.byte[i])
+    repeat i from nr_props-1 to 0
+        spi.SHIFTOUT (_MOSI, _SCK, core#MOSI_BITORDER, 8, byte[buff_addr][i])
+    outa[_CS] := 1
+    clearToSend (1)
 
 PRI readReg(reg, nr_bytes, buff_addr) | tmp, i
 
