@@ -44,15 +44,48 @@ PUB Main
     Setup
     _row := 1
 
+    FRR_D (1)
+    FRR_C (1)
+    FRR_B (1)
     FRR_A (1)
     ser.NewLine
     ser.Str (string("Total failures: "))
     ser.Dec (_fails)
     Flash (cfg#LED1, 100)
 
+PUB FRR_D(reps) | tmp, read
+
+'    _expanded := TRUE
+    _row++
+    repeat reps
+        repeat tmp from 0 to 7
+            rf.FastRespRegCfg (rf#FRR_D, tmp)
+            read := rf.FastRespRegCfg (rf#FRR_D, -2)
+            Message (string("FRR_D"), tmp, read)
+
+PUB FRR_C(reps) | tmp, read
+
+'    _expanded := TRUE
+    _row++
+    repeat reps
+        repeat tmp from 0 to 7
+            rf.FastRespRegCfg (rf#FRR_C, tmp)
+            read := rf.FastRespRegCfg (rf#FRR_C, -2)
+            Message (string("FRR_C"), tmp, read)
+
+PUB FRR_B(reps) | tmp, read
+
+'    _expanded := TRUE
+    _row++
+    repeat reps
+        repeat tmp from 0 to 7
+            rf.FastRespRegCfg (rf#FRR_B, tmp)
+            read := rf.FastRespRegCfg (rf#FRR_B, -2)
+            Message (string("FRR_B"), tmp, read)
+
 PUB FRR_A(reps) | tmp, read
 
-    _expanded := TRUE
+'    _expanded := TRUE
     _row++
     repeat reps
         repeat tmp from 0 to 7
