@@ -154,14 +154,12 @@ PUB FastRespRegCfg(reg, mode) | tmp
 
     setProperty(core#GROUP_FRR_CTL, 1, reg, @mode)
 
-PUB FIFORXBytes | tmp
-' Number of bytes in the RX FIFO
-    tmp := %00
+PUB FIFORXBytes
+' Returns: number of bytes in the RX FIFO
     readReg(core#FIFO_INFO, 1, @result)
 
-PUB FIFOTXBytes | tmp
-' Number of bytes in the TX FIFO
-    tmp := %00
+PUB FIFOTXBytes
+' Returns: number of bytes in the TX FIFO
     readReg(core#FIFO_INFO, 2, @result)
     result >>= 8
 
@@ -186,6 +184,7 @@ PUB InterruptStatus(buff_addr) | tmp[2]
 
 PUB Modulation(type) | tmp
 
+    tmp := 0
     getProperty(core#GROUP_MODEM, 1, core#MODEM_MOD_TYPE, @tmp)
     case type
         MOD_CW, MOD_OOK, MOD_2FSK, MOD_2GFSK, MOD_4FSK, MOD_4GFSK:
@@ -199,6 +198,7 @@ PUB Modulation(type) | tmp
 PUB PartID | tmp
 ' Read the Part ID from the device
 '   Returns: 4-digit part ID
+    tmp := 0
     readReg(core#PART_INFO, 8, @tmp)
     return (tmp.byte[core#REPL_PARTMSB] << 8) | tmp.byte[core#REPL_PARTLSB]
 
@@ -246,11 +246,6 @@ PUB RXData(nr_bytes, buff_addr)
 '   NOTE: Buffer must be large enough to hold nr_bytes
     readReg(core#READ_RX_FIFO, nr_bytes, @buff_addr)
 
-PUB SPIActive | tmp
-
-    tmp.byte[0] := 2
-    result := writeReg( core#CHANGE_STATE, 1, @tmp)
-
 PUB State(new_state) | tmp
 ' Manually switch chip to desired operating state
 '   Valid values:
@@ -262,6 +257,7 @@ PUB State(new_state) | tmp
 '       STATE_TX (7): TX state
 '       STATE_RX (8): RX state
 '   Any other value polls the chip and returns the current state
+    tmp := 0
     readReg(core#FAST_RESP_C, 1, @tmp)
     case new_state
         STATE_SLEEP, STATE_SPI_ACTIVE, STATE_READY, STATE_TX_TUNE, STATE_RX_TUNE, STATE_TX, STATE_RX:
@@ -274,6 +270,7 @@ PUB SyncWord(syncbits) | tmp
 ' Set sync word for TX and RX operation
 '   Valid values: $00_00_00_01..$FF_FF_FF_FF
 '   Any other value polls the chip and returns the current setting
+    tmp := 0
     getProperty(core#GROUP_SYNC, 4, core#SYNC_BITS_MSB, @tmp)
     case syncbits
         $00000001..$7FFFFFFF, $80000000..$FFFFFFFF:
@@ -287,6 +284,7 @@ PUB SyncWordLen(length) | tmp
 ' Set sync word length, in bytes
 '   Valid values: 1..4
 '   Any other value polls the chip and returns the current setting
+    tmp := 0
     getProperty(core#GROUP_SYNC, 1, core#SYNC_CONFIG, @tmp)
     case length
         1..4:
@@ -323,7 +321,7 @@ PRI clearToSend(deselect)
     return' (result == $FF)
 
 PRI getProperty (group, nr_props, start_prop, buff_addr) | tmp, i
-
+' Read one or more properties from the device into buffer at buff_addr
     tmp.byte[0] := core#GET_PROPERTY
     tmp.byte[1] := group
     tmp.byte[2] := nr_props
@@ -339,7 +337,7 @@ PRI getProperty (group, nr_props, start_prop, buff_addr) | tmp, i
     outa[_cs] := 1
 
 PRI setProperty (group, nr_props, start_prop, buff_addr) | tmp, i
-
+' Write one or more properties to the device from buffer at buff_addr
     clearToSend (DESELECT_AFTER)
     tmp.byte[0] := core#SET_PROPERTY
     tmp.byte[1] := group
