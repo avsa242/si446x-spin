@@ -316,8 +316,7 @@ PUB Preamble(bytes) | tmp
 ' Set preamble length, in bytes
 '   Valid values: 0..255
 '   Any other value polls the chip and returns the current setting
-'   NOTE: 0 effectively disables transmitting the preamble. In this case, the sync word will be the first
-'       transmitted field.
+'   NOTE: 0 effectively disables transmitting the preamble. In this case, the sync word will be the first transmitted field.
     tmp := 0
     getProperty(core#GROUP_PREAMBLE, 1, core#PREAMBLE_TX_LENGTH, @tmp)
     case bytes
@@ -399,13 +398,14 @@ PUB TXRate(bps): TX_DATA_RATE | MODEM_DATA_RATE, NCO_CLK_FREQ, TXOSR, NCOMOD
     case bps
         'TODO: Case for 40x?
         100..199_999:
-            TXOSR := TXOSR_20X << 26
-            MODEM_DATA_RATE := bps/20
-            NCOMOD := _fxtal
+            TXOSR := TXOSR_10X << 26
+            MODEM_DATA_RATE := bps*10
+            NCOMOD := _fxtal/10
             TXOSR |= NCOMOD
+
         200_000..1_000_000:
             TXOSR := TXOSR_10X << 26
-            MODEM_DATA_RATE := bps/10
+            MODEM_DATA_RATE := bps*10
             NCOMOD := _fxtal
             TXOSR |= NCOMOD
 
@@ -413,7 +413,10 @@ PUB TXRate(bps): TX_DATA_RATE | MODEM_DATA_RATE, NCO_CLK_FREQ, TXOSR, NCOMOD
             NCOMOD := TXOSR & $3_FF_FF_FF
             TXOSR := lookupz((TXOSR >> 26): 10, 40, 20)
 '            NCO_CLK_FREQ := (MODEM_DATA_RATE * _fxtal) / NCOMOD
-            NCO_CLK_FREQ := u64.MultDiv (MODEM_DATA_RATE, _fxtal, NCOMOD)'(x, num, denom)
+            if NCOMOD < _fxtal
+                NCO_CLK_FREQ := u64.MultDiv (MODEM_DATA_RATE, _fxtal/10, NCOMOD)
+            else
+                NCO_CLK_FREQ := u64.MultDiv (MODEM_DATA_RATE, _fxtal, NCOMOD)'(x, num, denom)
             TX_DATA_RATE := NCO_CLK_FREQ / TXOSR
 
     setProperty( core#GROUP_MODEM, 3, core#MODEM_DATA_RATE, @MODEM_DATA_RATE)
