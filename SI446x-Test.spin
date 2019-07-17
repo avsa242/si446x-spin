@@ -15,10 +15,10 @@ CON
     _clkmode    = cfg#_clkmode
     _xinfreq    = cfg#_xinfreq
 
-    CS_PIN      = 7
-    SCK_PIN     = 3
-    MOSI_PIN    = 4
-    MISO_PIN    = 5
+    CS_PIN      = 5
+    SCK_PIN     = 1
+    MOSI_PIN    = 0
+    MISO_PIN    = 2
 
     COL_REG     = 0
     COL_SET     = COL_REG+25
@@ -192,12 +192,13 @@ PUB PassFail(num)
 PUB Setup
 
     repeat until _ser_cog := ser.Start (115_200)
+    time.MSleep(500)
     ser.Clear
-    ser.Str(string("Serial terminal started", ser#NL))
+    ser.Str(string("Serial terminal started", ser#NL, ser#LF))
     if rf.Start (CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN)
-        ser.Str (string("SI446x driver started", ser#NL))
+        ser.Str (string("SI446x driver started", ser#NL, ser#LF))
     else
-        ser.Str (string("SI446x driver failed to start - halting", ser#NL))
+        ser.Str (string("SI446x driver failed to start - halting", ser#NL, ser#LF))
         rf.Stop
         time.MSleep (500)
         ser.Stop

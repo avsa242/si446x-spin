@@ -207,11 +207,20 @@ CON
             MASK_TX_DIRECT_MODE_GPIO    = MASK_MODEM_MOD_TYPE ^ (BITS_TX_DIRECT_MODE_GPIO << FLD_TX_DIRECT_MODE_GPIO)
             MASK_TX_DIRECT_MODE_TYPE    = MASK_MODEM_MOD_TYPE ^ (1 << FLD_TX_DIRECT_MODE_TYPE)
 
+        MODEM_DATA_RATE         = $03   '$03..$05
+        MODEM_TX_NCO_MODE       = $06   '$06..$09
+            FLD_NCOMOD          = 0
+            FLD_TXOSR           = 2
+            BITS_TXOSR          = %11
+        MODEM_CLKGEN_BAND       = $51
+
     GROUP_MODEM_CHFLT           = $21
     GROUP_PA                    = $22
     GROUP_SYNTH                 = $23
     GROUP_MATCH                 = $30
+
     GROUP_FREQ                  = $40
+        FREQ_CONTROL_INTE       = $00
     GROUP_RX                    = $50
     
 PUB Null

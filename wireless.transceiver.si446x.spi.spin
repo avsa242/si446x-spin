@@ -16,6 +16,11 @@ CON
     CLEAR                   = $FF
     NOT_CLEAR               = $00
 
+' TX Gaussian Filter oversampling ratio
+    TXOSR_10X               = 0
+    TXOSR_20X               = 2
+    TXOSR_40X               = 1
+
 ' Fast-Response Registers
     FRR_A                   = 0
     FRR_B                   = 1
@@ -58,6 +63,7 @@ CON
 
 VAR
 
+    long _fxtal
     byte _CS, _MOSI, _MISO, _SCK
 
 OBJ
@@ -65,6 +71,8 @@ OBJ
     spi : "com.spi.4w"                                             'PASM SPI Driver
     core: "core.con.si446x"
     time: "time"
+    u64 : "math.unsigned64"
+    f32 : "math.float.extended"
 
 PUB Null
 ''This is not a top-level object
@@ -94,6 +102,79 @@ PUB Startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN, SCK_DELAY, SCK_CPOL): okay
 PUB Stop
 
     spi.stop
+
+PUB CenterFreq(freq) | outdiv, band, xtal_frequency, f_pfd, n, ratio, rest, m, m0, m1, m2, freq_control, modem_clkgen
+
+'   return setProperty(core#GROUP_FREQ, 4, core#FREQ_CONTROL_INTE, @freq_control)
+    getProperty(core#GROUP_FREQ, 4, core#FREQ_CONTROL_INTE, @freq_control)
+    case PartID
+        $4460, $4461, $4463:
+            case freq
+                850..1050:
+                    outdiv := 4
+                    band := 0
+                425..525:
+                    outdiv := 8
+                    band := 2
+                284..350:
+                    outdiv := 12
+                    band := 3
+                142..175:
+                    outdiv := 24
+                    band := 5
+                OTHER:
+                    return freq_control
+        $4464:
+            case freq
+                675..960:
+                    outdiv := 4
+                    band := 1
+                450..674:
+                    outdiv := 6
+                    band := 2
+                338..449:
+                    outdiv := 8
+                    band := 3
+                225..337:
+                    outdiv := 12
+                    band := 4
+                169..224:
+                    outdiv := 16
+                    band := 4
+                119..168:
+                    outdiv := 24
+                    band := 5
+                OTHER:
+                    return FALSE
+
+' Set the MODEM_CLKGEN_BAND (not documented)
+    modem_clkgen := (band + 8)
+    setProperty(core#GROUP_MODEM, 1, core#MODEM_CLKGEN_BAND, @modem_clkgen)
+'	    return false
+
+    freq *= 1000000 ' Convert to Hz
+
+'Now generate the RF frequency properties
+'Need the Xtal/XO freq from the radio_config file:
+    freq := f32.FFloat (freq)
+'Now generate the RF frequency properties
+'Need the Xtal/XO freq from the radio_config file:
+    xtal_frequency := core#OSC_FREQ_NOMINAL
+    f_pfd := 2 * xtal_frequency / outdiv
+    n := (f32.FTrunc (freq) / f_pfd) - 1
+    ratio := f32.FDiv (freq, f32.FFloat (f_pfd))
+    rest := f32.FSub (ratio, f32.FFloat (n))
+    m := f32.FTrunc (f32.FMul (rest, 524288.0))
+    m2 := m / $10000
+    m1 := (m - m2 * $10000) / $100
+    m0 := (m - m2 * $10000 - m1 * $100)
+
+' PROP_FREQ_CONTROL_GROUP
+    freq_control.byte[0] := m0
+    freq_control.byte[1] := m1
+    freq_control.byte[2] := m2
+    freq_control.byte[3] := n
+    return setProperty(core#GROUP_FREQ, 4, core#FREQ_CONTROL_INTE, @freq_control)
 
 PUB ClearInts
 
@@ -183,7 +264,15 @@ PUB InterruptStatus(buff_addr) | tmp[2]
     longmove(buff_addr, @tmp, 2)
 
 PUB Modulation(type) | tmp
-
+' Set modulation type
+'   Valid values:
+'       MOD_CW (0): Continuous Wave
+'       MOD_OOK (1): On-Off Keying
+'       MOD_2FSK (2): 2-level Frequency Shift Keying
+'       MOD_2GFSK (3): 2-level Gaussian Frequency Shift Keying
+'       MOD_4FSK (4): 4-level Frequency Shift Keying
+'       MOD_4GFSK (5): 4-level Gaussian Frequency Shift Keying
+'   Any other value polls the chip and returns the current setting
     tmp := 0
     getProperty(core#GROUP_MODEM, 1, core#MODEM_MOD_TYPE, @tmp)
     case type
@@ -214,12 +303,13 @@ PUB PowerUp(osc_freq) | tmp[2]
             tmp.byte[core#ARG_XO_FREQ_MSMB] := osc_freq.byte[2]
             tmp.byte[core#ARG_XO_FREQ_LSMB] := osc_freq.byte[1]
             tmp.byte[core#ARG_XO_FREQ_LSB] := osc_freq.byte[0]
+            _fxtal := osc_freq
         OTHER:
             tmp.byte[core#ARG_XO_FREQ_MSB] := $01
             tmp.byte[core#ARG_XO_FREQ_MSMB] := $C9
             tmp.byte[core#ARG_XO_FREQ_LSMB] := $C3
             tmp.byte[core#ARG_XO_FREQ_LSB] := $80
-    
+            _fxtal := 30_000_000
     result := writeReg(core#POWER_UP, 6, @tmp)
 
 PUB Preamble(bytes) | tmp
@@ -295,6 +385,39 @@ PUB SyncWordLen(length) | tmp
     tmp &= core#MASK_LENGTH
     tmp := (tmp | length) & core#MASK_SYNC_CONFIG
     result := setProperty(core#GROUP_SYNC, 1, core#SYNC_CONFIG, @tmp)
+
+PUB TXRate(bps): TX_DATA_RATE | MODEM_DATA_RATE, NCO_CLK_FREQ, TXOSR, NCOMOD
+' NCO_CLK_FREQ = (MODEM_DATA_RATE*Fxtal_Hz/MODEM_TX_NCO_MODE)
+' TX_DATA_RATE=(NCO_CLK_FREQ/TXOSR)
+' Defaults: 
+' NCO_CLK_FREQ = (1_000_000*30_000_000/30_000_000
+' TX_DATA_RATE=(1000000/10)
+' Data rate=100_000 bps
+    MODEM_DATA_RATE := NCO_CLK_FREQ := TXOSR := NCOMOD := 0
+    getProperty(core#GROUP_MODEM, 3, core#MODEM_DATA_RATE, @MODEM_DATA_RATE)
+    getProperty(core#GROUP_MODEM, 4, core#MODEM_TX_NCO_MODE, @TXOSR)
+    case bps
+        'TODO: Case for 40x?
+        100..199_999:
+            TXOSR := TXOSR_20X << 26
+            MODEM_DATA_RATE := bps/20
+            NCOMOD := _fxtal
+            TXOSR |= NCOMOD
+        200_000..1_000_000:
+            TXOSR := TXOSR_10X << 26
+            MODEM_DATA_RATE := bps/10
+            NCOMOD := _fxtal
+            TXOSR |= NCOMOD
+
+        OTHER:
+            NCOMOD := TXOSR & $3_FF_FF_FF
+            TXOSR := lookupz((TXOSR >> 26): 10, 40, 20)
+'            NCO_CLK_FREQ := (MODEM_DATA_RATE * _fxtal) / NCOMOD
+            NCO_CLK_FREQ := u64.MultDiv (MODEM_DATA_RATE, _fxtal, NCOMOD)'(x, num, denom)
+            TX_DATA_RATE := NCO_CLK_FREQ / TXOSR
+
+    setProperty( core#GROUP_MODEM, 3, core#MODEM_DATA_RATE, @MODEM_DATA_RATE)
+    setProperty( core#GROUP_MODEM, 4, core#MODEM_TX_NCO_MODE, @TXOSR)
 
 PRI swap(swp_long) | i
 
