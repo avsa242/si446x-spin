@@ -212,7 +212,16 @@ CON
             FLD_NCOMOD          = 0
             FLD_TXOSR           = 2
             BITS_TXOSR          = %11
+
         MODEM_CLKGEN_BAND       = $51
+        MODEM_CLKGEN_BAND_MASK  = $1F
+            FLD_FORCE_SY_RECAL  = 4
+            FLD_SY_SEL          = 3
+            FLD_BAND            = 0
+            BITS_BAND           = %111
+            MASK_FORCE_SY_RECAL = MODEM_CLKGEN_BAND_MASK ^ (1 << FLD_FORCE_SY_RECAL)
+            MASK_SY_SEL         = MODEM_CLKGEN_BAND_MASK ^ (1 << FLD_SY_SEL)
+            MASK_BAND           = MODEM_CLKGEN_BAND_MASK ^ (BITS_BAND << FLD_BAND)
 
     GROUP_MODEM_CHFLT           = $21
     GROUP_PA                    = $22
