@@ -93,9 +93,9 @@ PUB Startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN, SCK_DELAY, SCK_CPOL): okay
 
             outa[_CS] := 1
             dira[_CS] := 1
-'            if lookdown(PartID: $4460, $4461, $4463, $4464)
-            if PowerUp(core#OSC_FREQ_NOMINAL) == $FF
-                return okay
+            if lookdown(PartID: $4460, $4461, $4463, $4464)
+                if PowerUp(core#OSC_FREQ_NOMINAL) == $FF
+                   return okay
 
     return FALSE                                                'If we got here, something went wrong
 
