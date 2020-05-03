@@ -5,7 +5,7 @@
     Description: Driver for Silicon Labs Si446x series transceivers (P2 version)
     Copyright (c) 2020
     Started Jan 4, 2020
-    Updated Jan 4, 2020
+    Updated May 3, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -87,7 +87,6 @@ OBJ
     time: "time"
     io  : "io"
     u64 : "math.unsigned64"
-'    f32 : "math.float.extended"
 
 PUB Null
 ''This is not a top-level object
@@ -104,7 +103,7 @@ PUB Start(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN, SCK_FREQ=5_000_000): okay
 
             io.High(_CS)
             io.Output(_CS)
-            if lookdown(PartID: $4460, $4461, $4463, $4464)
+            if lookdown(DeviceID: $4460, $4461, $4463, $4464)
                 if PowerUp(core#OSC_FREQ_NOMINAL) == $FF
                     return okay
 
@@ -193,6 +192,50 @@ PUB ClkTest(clkdiv) | tmp[2]
     tmp := (1 << core#FLD_DIV_CLK_EN) | (clkdiv << core#FLD_DIV_CLK_SEL)
     result := setProperty(core#GROUP_GLOBAL, 1, core#GLOBAL_CLK_CFG, @tmp)
 
+PUB DataRate(bps=-2): TX_DATA_RATE | MODEM_DATA_RATE, NCO_CLK_FREQ, TXOSR, NCOMOD
+' NCO_CLK_FREQ = (MODEM_DATA_RATE*Fxtal_Hz/MODEM_TX_NCO_MODE)
+' TX_DATA_RATE=(NCO_CLK_FREQ/TXOSR)
+' Defaults:
+' NCO_CLK_FREQ = (1_000_000*30_000_000/30_000_000
+' TX_DATA_RATE=(1000000/10)
+' Data rate=100_000 bps
+    MODEM_DATA_RATE := NCO_CLK_FREQ := TXOSR := NCOMOD := 0
+    getProperty(core#GROUP_MODEM, 3, core#MODEM_DATA_RATE, @MODEM_DATA_RATE)
+    getProperty(core#GROUP_MODEM, 4, core#MODEM_TX_NCO_MODE, @TXOSR)
+    case bps
+        'TODO: Case for 40x?
+        100..199_999:
+            TXOSR := TXOSR_10X << 26
+            MODEM_DATA_RATE := bps*10
+            NCOMOD := _fxtal/10
+            TXOSR |= NCOMOD
+
+        200_000..1_000_000:
+            TXOSR := TXOSR_10X << 26
+            MODEM_DATA_RATE := bps*10
+            NCOMOD := _fxtal
+            TXOSR |= NCOMOD
+
+        OTHER:
+            NCOMOD := TXOSR & $3_FF_FF_FF
+            TXOSR := lookupz((TXOSR >> 26): 10, 40, 20)
+'            NCO_CLK_FREQ := (MODEM_DATA_RATE * _fxtal) / NCOMOD
+            if NCOMOD < _fxtal
+                NCO_CLK_FREQ := u64.MultDiv (MODEM_DATA_RATE, _fxtal/10, NCOMOD)
+            else
+                NCO_CLK_FREQ := u64.MultDiv (MODEM_DATA_RATE, _fxtal, NCOMOD)'(x, num, denom)
+            TX_DATA_RATE := NCO_CLK_FREQ / TXOSR
+
+    setProperty( core#GROUP_MODEM, 3, core#MODEM_DATA_RATE, @MODEM_DATA_RATE)
+    setProperty( core#GROUP_MODEM, 4, core#MODEM_TX_NCO_MODE, @TXOSR)
+
+PUB DeviceID | tmp[2]
+' Read the Part ID from the device
+'   Returns: 4-digit part ID
+    tmp := $00
+    readReg(core#PART_INFO, 8, @tmp)
+    return (tmp.byte[core#REPL_PARTMSB] << 8) | tmp.byte[core#REPL_PARTLSB]
+
 PUB FastRespRegCfg(reg, mode) | tmp
 ' Configure the information available in the Fast-Response Registers A, B, C, D
 '   Valid values:
@@ -243,7 +286,7 @@ PUB FlushTX | tmp
     tmp := %1
     result := writeReg(core#FIFO_INFO, 1, @tmp)
 
-PUB InterruptStatus(buff_addr) | tmp[2]
+PUB IntStatus(buff_addr) | tmp[2]
 ' Read interrupt status into buffer at buff_addr
 '   NOTE: Buffer must be at least 8 bytes
     tmp.byte[core#ARG_PH_CLR_PEND] := %1111_1111
@@ -252,7 +295,7 @@ PUB InterruptStatus(buff_addr) | tmp[2]
     readReg(core#GET_INT_STATUS, 8, @tmp)
     longmove(buff_addr, @tmp, 2)
 
-PUB Modulation(type) | tmp
+PUB Modulation(type=-2) | tmp
 ' Set modulation type
 '   Valid values:
 '       MOD_CW (0): Continuous Wave
@@ -272,13 +315,6 @@ PUB Modulation(type) | tmp
     tmp &= core#MASK_MOD_TYPE
     tmp := (tmp | type) & core#MASK_MODEM_MOD_TYPE
     setProperty(core#GROUP_MODEM, 1, core#MODEM_MOD_TYPE, @tmp)
-
-PUB PartID | tmp[2]
-' Read the Part ID from the device
-'   Returns: 4-digit part ID
-    tmp := $00
-    readReg(core#PART_INFO, 8, @tmp)
-    return (tmp.byte[core#REPL_PARTMSB] << 8) | tmp.byte[core#REPL_PARTLSB]
 
 PUB PowerUp(osc_freq) | tmp[2]
 ' Perform device powerup, and specify oscillator frequency, in Hz
@@ -301,7 +337,7 @@ PUB PowerUp(osc_freq) | tmp[2]
             _fxtal := 30_000_000
     result := writeReg(core#POWER_UP, 6, @tmp)
 
-PUB Preamble(bytes) | tmp
+PUB PreambleLen(bytes=-2) | tmp
 ' Set preamble length, in bytes
 '   Valid values: 0..255
 '   Any other value polls the chip and returns the current setting
@@ -319,12 +355,7 @@ PUB NoOp
 
     return readReg(core#NOOP, 0, @result)
 
-PUB RXData(nr_bytes, buff_addr)
-' Read nr_bytes from RX FIFO into buff_addr
-'   NOTE: Buffer must be large enough to hold nr_bytes
-    readReg(core#READ_RX_FIFO, nr_bytes, @buff_addr)
-
-PUB State(new_state) | tmp
+PUB OpMode(new_state=-2) | tmp
 ' Manually switch chip to desired operating state
 '   Valid values:
 '       STATE_SLEEP (1): Put chip in SLEEP or STANDBY state
@@ -344,7 +375,12 @@ PUB State(new_state) | tmp
 
     result := writeReg(core#CHANGE_STATE, 1, @new_state)
 
-PUB SyncWord(syncbits) | tmp
+PUB RXPayload(nr_bytes, buff_addr)
+' Read nr_bytes from RX FIFO into buff_addr
+'   NOTE: Buffer must be large enough to hold nr_bytes
+    readReg(core#READ_RX_FIFO, nr_bytes, @buff_addr)
+
+PUB SyncWord(syncbits=0) | tmp
 ' Set sync word for TX and RX operation
 '   Valid values: $00_00_00_01..$FF_FF_FF_FF
 '   Any other value polls the chip and returns the current setting
@@ -358,7 +394,7 @@ PUB SyncWord(syncbits) | tmp
 
     result := setProperty(core#GROUP_SYNC, 4, core#SYNC_BITS_MSB, @syncbits)
 
-PUB SyncWordLen(length) | tmp
+PUB SyncWordLen(length=-2) | tmp
 ' Set sync word length, in bytes
 '   Valid values: 1..4
 '   Any other value polls the chip and returns the current setting
@@ -373,43 +409,6 @@ PUB SyncWordLen(length) | tmp
     tmp &= core#MASK_LENGTH
     tmp := (tmp | length) & core#MASK_SYNC_CONFIG
     result := setProperty(core#GROUP_SYNC, 1, core#SYNC_CONFIG, @tmp)
-
-PUB TXRate(bps): TX_DATA_RATE | MODEM_DATA_RATE, NCO_CLK_FREQ, TXOSR, NCOMOD
-' NCO_CLK_FREQ = (MODEM_DATA_RATE*Fxtal_Hz/MODEM_TX_NCO_MODE)
-' TX_DATA_RATE=(NCO_CLK_FREQ/TXOSR)
-' Defaults: 
-' NCO_CLK_FREQ = (1_000_000*30_000_000/30_000_000
-' TX_DATA_RATE=(1000000/10)
-' Data rate=100_000 bps
-    MODEM_DATA_RATE := NCO_CLK_FREQ := TXOSR := NCOMOD := 0
-    getProperty(core#GROUP_MODEM, 3, core#MODEM_DATA_RATE, @MODEM_DATA_RATE)
-    getProperty(core#GROUP_MODEM, 4, core#MODEM_TX_NCO_MODE, @TXOSR)
-    case bps
-        'TODO: Case for 40x?
-        100..199_999:
-            TXOSR := TXOSR_10X << 26
-            MODEM_DATA_RATE := bps*10
-            NCOMOD := _fxtal/10
-            TXOSR |= NCOMOD
-
-        200_000..1_000_000:
-            TXOSR := TXOSR_10X << 26
-            MODEM_DATA_RATE := bps*10
-            NCOMOD := _fxtal
-            TXOSR |= NCOMOD
-
-        OTHER:
-            NCOMOD := TXOSR & $3_FF_FF_FF
-            TXOSR := lookupz((TXOSR >> 26): 10, 40, 20)
-'            NCO_CLK_FREQ := (MODEM_DATA_RATE * _fxtal) / NCOMOD
-            if NCOMOD < _fxtal
-                NCO_CLK_FREQ := u64.MultDiv (MODEM_DATA_RATE, _fxtal/10, NCOMOD)
-            else
-                NCO_CLK_FREQ := u64.MultDiv (MODEM_DATA_RATE, _fxtal, NCOMOD)'(x, num, denom)
-            TX_DATA_RATE := NCO_CLK_FREQ / TXOSR
-
-    setProperty( core#GROUP_MODEM, 3, core#MODEM_DATA_RATE, @MODEM_DATA_RATE)
-    setProperty( core#GROUP_MODEM, 4, core#MODEM_TX_NCO_MODE, @TXOSR)
 
 PRI swap(swp_long) | i
 
