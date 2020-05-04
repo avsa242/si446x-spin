@@ -1,14 +1,14 @@
 # si4463-spin 
----------------
+-------------
 
-This is a P8X32A/Propeller driver object for Silicon Labs Si446x-series transceivers
+This is a P8X32A/Propeller, P2X8C4M64P/Propeller 2 driver object for Silicon Labs Si446x-series transceivers
 
 ## Salient Features
 
 * SPI connection at up to 1MHz (P1), _TBD_ (P2)
-* Set common RF parameters: carrier frequency, TX bitrate, modulation (2/4FSK, GFSK, 2/4GFSK, OOK, and CW for TX testing)
+* Set common RF parameters: carrier frequency, TX bitrate, modulation (2/4FSK, GFSK, 2/4GFSK, OOK, and CW for TX testing), frequency deviation
 * Supports on-air bit rates from 100bps to 1Mbps
-* Options for increasing transmission robustness: Syncword
+* Options for increasing transmission robustness: Syncword, preamble
 * Supports setting preamble length
 
 ## Requirements

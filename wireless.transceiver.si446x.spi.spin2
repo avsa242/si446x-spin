@@ -308,6 +308,10 @@ PUB FreqDeviation(Hz=-2) | tmp, outdiv, tmp1, tmp2
 
     setProperty(core#GROUP_MODEM, 3, core#MODEM_FREQ_DEV, @Hz)
 
+PUB Idle
+' Change transceiver to idle state
+    OpMode(STATE_SPI_ACTIVE)
+
 PUB IntStatus(buff_addr) | tmp[2]
 ' Read interrupt status into buffer at buff_addr
 '   NOTE: Buffer must be at least 8 bytes
@@ -431,6 +435,10 @@ PUB SyncWordLen(length=-2) | tmp
     tmp &= core#MASK_LENGTH
     tmp := (tmp | length) & core#MASK_SYNC_CONFIG
     result := setProperty(core#GROUP_SYNC, 1, core#SYNC_CONFIG, @tmp)
+
+PUB TXPayload(nr_bytes, buff_addr)
+' Transmit data queued in FIFO
+    writeReg(core#WRITE_TX_FIFO, nr_bytes, buff_addr)
 
 PRI swap(swp_long) | i
 
