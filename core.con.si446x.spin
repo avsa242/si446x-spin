@@ -214,6 +214,9 @@ CON
             FLD_TXOSR           = 2
             BITS_TXOSR          = %11
 
+        MODEM_FREQ_DEV          = $0A
+        MODEM_FREQ_DEV_MASK     = $1FFFF
+
         MODEM_CLKGEN_BAND       = $51
         MODEM_CLKGEN_BAND_MASK  = $1F
             FLD_FORCE_SY_RECAL  = 4

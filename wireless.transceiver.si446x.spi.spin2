@@ -5,7 +5,7 @@
     Description: Driver for Silicon Labs Si446x series transceivers (P2 version)
     Copyright (c) 2020
     Started Jan 4, 2020
-    Updated May 3, 2020
+    Updated May 4, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -18,7 +18,7 @@ CON
 ' Some constants used in various calculations
     NPRESC                  = 2                         ' Prescaler divider - do not change
     F_XOSC_PRESCALE         = F_XOSC * NPRESC
-    TWO_NINETEEN            = 1 << 19
+    NINETN                  = 1 << 19
     FP_SCALE                = 1_000_000                 ' Scale for fixed-point math
 
     FRAC_MSB                = 2                         ' Byte indexes within the
@@ -141,7 +141,7 @@ PUB CarrierFreq(Hz=-2) | tmp_fc, tmp_band, plldiv, pfd_freq, inte, ratio, rest, 
             tmp_band &= core#BITS_BAND
             plldiv := lookupz(tmp_band: 4, 6, 8, 12, 16, 24, 24, 24)
             inte *= FP_SCALE
-            rest := u64.MultDiv(frac, FP_SCALE, TWO_NINETEEN)
+            rest := u64.MultDiv(frac, FP_SCALE, NINETN)
             result := u64.MultDiv( (inte + rest), (F_XOSC_PRESCALE / plldiv), FP_SCALE)
             return
 
@@ -286,6 +286,28 @@ PUB FlushTX | tmp
     tmp := %1
     result := writeReg(core#FIFO_INFO, 1, @tmp)
 
+PUB FreqDeviation(Hz=-2) | tmp, outdiv, tmp1, tmp2
+' Set carrier frequency deviation, in Hz
+'   Valid values: 29..1_500_000
+'   Any other value polls the chip and returns the current setting
+'   NOTE: The resolution of the Si446x synthesizer is 28.6Hz. Value set will be nearest multiple.
+    tmp := outdiv := $00
+    getProperty(core#GROUP_MODEM, 3, core#MODEM_FREQ_DEV, @tmp)
+    getProperty(core#GROUP_MODEM, 1, core#MODEM_CLKGEN_BAND, @outdiv)
+    outdiv := lookupz(outdiv & core#BITS_BAND: 4, 6, 8, 12, 16, 24, 24, 24)
+    case Hz
+        29..1_500_000:'28.6hz res
+            tmp1 := NINETN * outdiv
+            tmp2 := NPRESC * F_XOSC
+            Hz := u64.MultDiv(tmp1, Hz, tmp2)
+        OTHER:
+            tmp1 := NPRESC * F_XOSC
+            tmp2 := NINETN * outdiv
+            result := u64.MultDiv(tmp, tmp1, tmp2)
+            return
+
+    setProperty(core#GROUP_MODEM, 3, core#MODEM_FREQ_DEV, @Hz)
+
 PUB IntStatus(buff_addr) | tmp[2]
 ' Read interrupt status into buffer at buff_addr
 '   NOTE: Buffer must be at least 8 bytes
@@ -378,7 +400,7 @@ PUB OpMode(new_state=-2) | tmp
 PUB RXPayload(nr_bytes, buff_addr)
 ' Read nr_bytes from RX FIFO into buff_addr
 '   NOTE: Buffer must be large enough to hold nr_bytes
-    readReg(core#READ_RX_FIFO, nr_bytes, @buff_addr)
+    readReg(core#READ_RX_FIFO, nr_bytes, buff_addr)
 
 PUB SyncWord(syncbits=0) | tmp
 ' Set sync word for TX and RX operation
@@ -448,7 +470,7 @@ PRI getProperty (group, nr_props, start_prop, buff_addr) | tmp, i
     clearToSend (NO_DESELECT_AFTER) ' Check CTS, but leave the chip selected afterwards, because
     repeat i from 0 to nr_props-1   '   the data needs to be read in the same transaction as the check.
         byte[buff_addr][i] := spi.Read (_MISO, _SCK, core#MISO_BITORDER, 8)
-    outa[_cs] := 1
+    io.High(_CS)
 
 PRI setProperty (group, nr_props, start_prop, buff_addr) | tmp, i
 ' Write one or more properties to the device from buffer at buff_addr
