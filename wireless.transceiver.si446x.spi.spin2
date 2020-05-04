@@ -440,6 +440,20 @@ PUB TXPayload(nr_bytes, buff_addr)
 ' Transmit data queued in FIFO
     writeReg(core#WRITE_TX_FIFO, nr_bytes, buff_addr)
 
+PUB TXPower(dBm=-2) | tmp
+' Set transmit power level, in dBm
+'   Valid values: 0..127
+'   Any other value polls the chip and returns the current setting
+'   NOTE: XXX This is currently not taken in dBm, but register value, as the datasheet doesn't provide a formula for calculating power level.
+    tmp := $00
+    getProperty(core#GROUP_PA, 1, core#PA_POWER_LEVEL, @tmp)
+    case dBm
+        0..127:
+        OTHER:
+            return tmp & core#BITS_DDAC
+
+    setProperty(core#GROUP_PA, 1, core#PA_POWER_LEVEL, @dBm)
+
 PRI swap(swp_long) | i
 
     repeat i from 0 to 3

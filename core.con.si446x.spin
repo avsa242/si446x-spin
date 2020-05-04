@@ -228,7 +228,13 @@ CON
             MASK_BAND           = MODEM_CLKGEN_BAND_MASK ^ (BITS_BAND << FLD_BAND)
 
     GROUP_MODEM_CHFLT           = $21
+
     GROUP_PA                    = $22
+        PA_POWER_LEVEL          = $01
+        PA_POWER_LEVEL_MASK     = $7F
+            FLD_DDAC            = 0
+            BITS_DDAC           = %1111111
+
     GROUP_SYNTH                 = $23
     GROUP_MATCH                 = $30
 
