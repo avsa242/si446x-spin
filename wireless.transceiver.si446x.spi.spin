@@ -207,7 +207,7 @@ PUB DataRate(bps): TX_DATA_RATE | MODEM_DATA_RATE, NCO_CLK_FREQ, TXOSR, NCOMOD
         'TODO: Case for 40x?
         100..199_999:
             TXOSR := TXOSR_10X << 26
-            MODEM_DATA_RATE := bps*10
+            MODEM_DATA_RATE := bps'*10
             NCOMOD := _fxtal/10
             TXOSR |= NCOMOD
 
@@ -226,6 +226,7 @@ PUB DataRate(bps): TX_DATA_RATE | MODEM_DATA_RATE, NCO_CLK_FREQ, TXOSR, NCOMOD
             else
                 NCO_CLK_FREQ := u64.MultDiv (MODEM_DATA_RATE, _fxtal, NCOMOD)'(x, num, denom)
             TX_DATA_RATE := NCO_CLK_FREQ / TXOSR
+            return TX_DATA_RATE*10
 
     setProperty( core#GROUP_MODEM, 3, core#MODEM_DATA_RATE, @MODEM_DATA_RATE)
     setProperty( core#GROUP_MODEM, 4, core#MODEM_TX_NCO_MODE, @TXOSR)
@@ -436,6 +437,16 @@ PUB SyncWordLen(length) | tmp
     tmp &= core#MASK_LENGTH
     tmp := (tmp | length) & core#MASK_SYNC_CONFIG
     result := setProperty(core#GROUP_SYNC, 1, core#SYNC_CONFIG, @tmp)
+
+PUB TXMode | cmd_packet[2]
+' Change chip state to transmit
+    cmd_packet.byte[0] := 0                                         ' Channel
+    cmd_packet.byte[1] := (STATE_TX_TUNE << core#FLD_TXCOMPLETE_STATE)   ' Condition
+    cmd_packet.byte[2] := 0                                         ' Length MSB
+    cmd_packet.byte[3] := 0                                         '   LSB
+    cmd_packet.byte[4] := 0                                         ' Inter-packet delay (uS)
+    cmd_packet.byte[5] := 0                                         ' Repeat packet nr_times
+    writeReg(core#START_TX, 6, @cmd_packet)
 
 PUB TXPayload(nr_bytes, buff_addr)
 ' Transmit data queued in FIFO

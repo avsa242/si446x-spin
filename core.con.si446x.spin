@@ -121,7 +121,20 @@ CON
     GET_PH_STATUS               = $21
     GET_MODEM_STATUS            = $22
     GET_CHIP_STATUS             = $23
+
     START_TX                    = $31
+    CONDITION_MASK              = $FF
+        FLD_TXCOMPLETE_STATE    = 4
+        FLD_UPDATE              = 3
+        FLD_RETRANSMIT          = 2
+        FLD_START               = 0
+        BITS_TXCOMPLETE_STATE   = %1111
+        BITS_START              = %11
+        MASK_TXCOMPLETE_STATE   = CONDITION_MASK ^ (BITS_TXCOMPLETE_STATE << FLD_TXCOMPLETE_STATE)
+        MASK_UPDATE             = CONDITION_MASK ^ (1 << FLD_UPDATE)
+        MASK_RETRANSMIT         = CONDITION_MASK ^ (1 << FLD_RETRANSMIT)
+        MASK_START              = CONDITION_MASK ^ (BITS_START << FLD_START)
+
     START_RX                    = $32
 
     REQUEST_DEVICE_STATE        = $33
@@ -192,6 +205,11 @@ CON
         SYNC_BITS_LSB           = $04
 
     GROUP_PKT                   = $12
+        PKT_FIELD_1_LENGTH      = $0D   '..$0E (b12..0)
+        PKT_FIELD_2_LENGTH      = $11   '..$12 (b12..0)
+        PKT_FIELD_3_LENGTH      = $15   '..$16 (b12..0)
+        PKT_FIELD_4_LENGTH      = $19   '..$1A (b12..0)
+        PKT_FIELD_5_LENGTH      = $1D   '..$1E (b12..0)
 
     GROUP_MODEM                 = $20
         MODEM_MOD_TYPE          = $00
