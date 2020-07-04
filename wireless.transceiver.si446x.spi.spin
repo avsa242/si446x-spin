@@ -228,8 +228,8 @@ PUB DataRate(bps): TX_DATA_RATE | MODEM_DATA_RATE, NCO_CLK_FREQ, TXOSR, NCOMOD
             TX_DATA_RATE := NCO_CLK_FREQ / TXOSR
             return TX_DATA_RATE*10
 
-    setProperty( core#GROUP_MODEM, 3, core#MODEM_DATA_RATE, @MODEM_DATA_RATE)
-    setProperty( core#GROUP_MODEM, 4, core#MODEM_TX_NCO_MODE, @TXOSR)
+    setProperty(core#GROUP_MODEM, 3, core#MODEM_DATA_RATE, @MODEM_DATA_RATE)
+    setProperty(core#GROUP_MODEM, 4, core#MODEM_TX_NCO_MODE, @TXOSR)
 
 PUB DeviceID | tmp[2]
 ' Read the Part ID from the device
@@ -415,6 +415,18 @@ PUB OpMode(new_state) | tmp
 
     result := writeReg(core#CHANGE_STATE, 1, @new_state)
 
+PUB RXMode | cmd_packet[2]
+' Change chip state to receive
+    cmd_packet.byte[0] := 0                                         ' Channel
+    cmd_packet.byte[1] := 0                                         ' Update, Start
+    cmd_packet.byte[2] := 0                                         ' Length MSB
+    cmd_packet.byte[3] := 0                                         '   LSB (use PayloadLen())
+    cmd_packet.byte[4] := 0                                         ' Post-timeout state
+    cmd_packet.byte[5] := 0                                         ' Post-valid packet state
+    cmd_packet.byte[6] := 0                                         ' Post-invalid packet state
+    writeReg(core#START_RX, 7, @cmd_packet)
+    clearToSend(DESELECT_AFTER)
+
 PUB RXPayload(nr_bytes, buff_addr)
 ' Read nr_bytes from RX FIFO into buff_addr
 '   NOTE: Buffer must be large enough to hold nr_bytes
@@ -459,6 +471,7 @@ PUB TXMode | cmd_packet[2]
     cmd_packet.byte[4] := 0                                         ' Inter-packet delay (uS)
     cmd_packet.byte[5] := 0                                         ' Repeat packet nr_times
     writeReg(core#START_TX, 6, @cmd_packet)
+    clearToSend(DESELECT_AFTER)
 
 PUB TXPayload(nr_bytes, buff_addr)
 ' Transmit data queued in FIFO
@@ -596,7 +609,7 @@ PRI readReg(reg, nr_bytes, buff_addr) | tmp, i
 
         core#READ_RX_FIFO:
             io.Low(_CS)
-            spi.SHIFTOUT (_MOSI, _SCK, core#MISO_BITORDER, 8, reg)
+            spi.SHIFTOUT (_MOSI, _SCK, core#MOSI_BITORDER, 8, reg)
             repeat i from 0 to nr_bytes-1
                 byte[buff_addr][i] := spi.SHIFTIN (_MISO, _SCK, core#MISO_BITORDER, 8)
             io.High(_CS)
@@ -612,8 +625,7 @@ PRI readReg(reg, nr_bytes, buff_addr) | tmp, i
 
 PRI writeReg(reg, nr_bytes, buf_addr) | i, tmp[3]
 ' Write nr_bytes to register 'reg' stored at buf_addr
-    result := clearToSend(DESELECT_AFTER)
-    if result == CLEAR
+    if result := clearToSend(DESELECT_AFTER)
         io.Low(_CS)
         spi.SHIFTOUT(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg)
     
