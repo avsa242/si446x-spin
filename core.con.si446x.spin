@@ -194,7 +194,7 @@ CON
             BITS_LENGTH         = %11
             BITS_RX_ERRORS      = %111
             MASK_LENGTH         = MASK_SYNC_CONFIG ^ (BITS_LENGTH << FLD_LENGTH)
-            MASK_MACH           = MASK_SYNC_CONFIG ^ (1 << FLD_MANCH)
+            MASK_MANCH          = MASK_SYNC_CONFIG ^ (1 << FLD_MANCH)
             MASK_4FSK           = MASK_SYNC_CONFIG ^ (1 << FLD_4FSK)
             MASK_RX_ERRORS      = MASK_SYNC_CONFIG ^ (BITS_RX_ERRORS << FLD_RX_ERRORS)
             MASK_SKIP_TX        = MASK_SYNC_CONFIG ^ (1 << FLD_SKIP_TX)

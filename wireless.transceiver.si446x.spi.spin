@@ -344,6 +344,18 @@ PUB Modulation(type) | tmp
     tmp := (tmp | type) & core#MASK_MODEM_MOD_TYPE
     setProperty(core#GROUP_MODEM, 1, core#MODEM_MOD_TYPE, @tmp)
 
+PUB PayloadLen(bytes) | tmp
+' Set payload length, in bytes
+'   Valid values: 0..8191
+'   Any other value polls the chip and returns the current setting
+    getProperty(core#GROUP_PKT, 2, core#PKT_FIELD_1_LENGTH, @tmp)
+    case bytes
+        0..8191:
+        OTHER:
+            return tmp
+
+    setProperty(core#GROUP_PKT, 2, core#PKT_FIELD_1_LENGTH, @bytes)
+
 PUB PowerUp(osc_freq) | tmp[2]
 ' Perform device powerup, and specify oscillator frequency, in Hz
 '   Valid values: 25_000_000 to 32_000_000
@@ -411,7 +423,7 @@ PUB RXPayload(nr_bytes, buff_addr)
 PUB SyncWord(syncbits) | tmp
 ' Set sync word for TX and RX operation
 '   Valid values: $00_00_00_01..$FF_FF_FF_FF
-'   Any other value polls the chip and returns the current setting
+'   $0 polls the chip and returns the current setting
     tmp := $00
     getProperty(core#GROUP_SYNC, 4, core#SYNC_BITS_MSB, @tmp)
     case syncbits
@@ -496,7 +508,6 @@ PRI getProperty (group, nr_props, start_prop, buff_addr) | tmp, i
     tmp.byte[1] := group
     tmp.byte[2] := nr_props
     tmp.byte[3] := start_prop
-    clearToSend (DESELECT_AFTER)
     io.Low(_CS)
     repeat i from 0 to 3
         spi.SHIFTOUT (_MOSI, _SCK, core#MOSI_BITORDER, 8, tmp.byte[i])
