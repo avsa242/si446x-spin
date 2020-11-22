@@ -235,6 +235,18 @@ CON
         MODEM_FREQ_DEV          = $0A
         MODEM_FREQ_DEV_MASK     = $1FFFF
 
+        MODEM_DECIMATION_CFG1   = $1E
+        MODEM_DECIMATION_CFG1_MASK  = $FE
+            FLD_NDEC0           = 1
+            FLD_NDEC1           = 4
+            FLD_NDEC2           = 6
+            BITS_NDEC0          = %111
+            BITS_NDEC1          = %11
+            BITS_NDEC2          = %11
+            MASK_NDEC0          = MODEM_DECIMATION_CFG1_MASK ^ (BITS_NDEC0 << FLD_NDEC0)
+            MASK_NDEC1          = MODEM_DECIMATION_CFG1_MASK ^ (BITS_NDEC1 << FLD_NDEC1)
+            MASK_NDEC2          = MODEM_DECIMATION_CFG1_MASK ^ (BITS_NDEC2 << FLD_NDEC2)
+
         MODEM_CLKGEN_BAND       = $51
         MODEM_CLKGEN_BAND_MASK  = $1F
             FLD_FORCE_SY_RECAL  = 4

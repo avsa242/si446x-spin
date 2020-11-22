@@ -207,7 +207,7 @@ PUB DataRate(bps): TX_DATA_RATE | MODEM_DATA_RATE, NCO_CLK_FREQ, TXOSR, NCOMOD
         'TODO: Case for 40x?
         100..199_999:
             TXOSR := TXOSR_10X << 26
-            MODEM_DATA_RATE := bps'*10
+            MODEM_DATA_RATE := bps'*10  299.300 303.500
             NCOMOD := _fxtal/10
             TXOSR |= NCOMOD
 
@@ -344,6 +344,30 @@ PUB Modulation(type) | tmp
     tmp := (tmp | type) & core#MASK_MODEM_MOD_TYPE
     setProperty(core#GROUP_MODEM, 1, core#MODEM_MOD_TYPE, @tmp)
 
+PUB NoOp
+
+    return readReg(core#NOOP, 0, @result)
+
+PUB OpMode(new_state) | tmp
+' Manually switch chip to desired operating state
+'   Valid values:
+'       STATE_SLEEP (1): Put chip in SLEEP or STANDBY state
+'       STATE_SPI_ACTIVE (2): SPI_ACTIVE state
+'       STATE_READY (3): READY state
+'       STATE_TX_TUNE (5): TX_TUNE state
+'       STATE_RX_TUNE (6): RX_TUNE state
+'       STATE_TX (7): TX state
+'       STATE_RX (8): RX state
+'   Any other value polls the chip and returns the current state
+    tmp := $00
+    readReg(core#FAST_RESP_C, 1, @tmp)
+    case new_state
+        STATE_SLEEP, STATE_SPI_ACTIVE, STATE_READY, STATE_TX_TUNE, STATE_RX_TUNE, STATE_TX, STATE_RX:
+        OTHER:
+            return tmp
+
+    result := writeReg(core#CHANGE_STATE, 1, @new_state)
+
 PUB PayloadLen(bytes) | tmp
 ' Set payload length, in bytes
 '   Valid values: 0..8191
@@ -391,29 +415,10 @@ PUB PreambleLen(bytes) | tmp
 
     setProperty(core#GROUP_PREAMBLE, 1, core#PREAMBLE_TX_LENGTH, @bytes)
 
-PUB NoOp
+PUB RXBandwidth(Hz)
 
-    return readReg(core#NOOP, 0, @result)
-
-PUB OpMode(new_state) | tmp
-' Manually switch chip to desired operating state
-'   Valid values:
-'       STATE_SLEEP (1): Put chip in SLEEP or STANDBY state
-'       STATE_SPI_ACTIVE (2): SPI_ACTIVE state
-'       STATE_READY (3): READY state
-'       STATE_TX_TUNE (5): TX_TUNE state
-'       STATE_RX_TUNE (6): RX_TUNE state
-'       STATE_TX (7): TX state
-'       STATE_RX (8): RX state
-'   Any other value polls the chip and returns the current state
-    tmp := $00
-    readReg(core#FAST_RESP_C, 1, @tmp)
-    case new_state
-        STATE_SLEEP, STATE_SPI_ACTIVE, STATE_READY, STATE_TX_TUNE, STATE_RX_TUNE, STATE_TX, STATE_RX:
-        OTHER:
-            return tmp
-
-    result := writeReg(core#CHANGE_STATE, 1, @new_state)
+    Hz &= $F0
+    setProperty(core#GROUP_MODEM, 1, core#MODEM_DECIMATION_CFG1, @Hz)
 
 PUB RXMode | cmd_packet[2]
 ' Change chip state to receive
