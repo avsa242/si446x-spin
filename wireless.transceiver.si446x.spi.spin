@@ -96,23 +96,23 @@ PUB Null
 PUB Start(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN): okay
 
     if okay := spi.start (core#SCK_DELAY, core#CPOL)              'SPI Object Started?
-        time.MSleep (core#TPOR)
+        time.msleep(core#TPOR)
         _CS := CS_PIN
         _MOSI := MOSI_PIN
         _MISO := MISO_PIN
         _SCK := SCK_PIN
 
-        io.High(_CS)
-        io.Output(_CS)
-        if lookdown(DeviceID: $4460, $4461, $4463, $4464)
-            if PowerUp(core#OSC_FREQ_NOMINAL) == $FF
+        io.high(_CS)
+        io.output(_CS)
+        if lookdown(deviceid{}: $4460, $4461, $4463, $4464)
+            if powerup(core#OSC_FREQ_NOMINAL) == $FF
                 return okay
 
     return FALSE                                                'If we got here, something went wrong
 
-PUB Stop
+PUB Stop{}
 
-    spi.stop
+    spi.stop{}
 
 PUB CarrierFreq(Hz) | tmp_fc, tmp_band, plldiv, pfd_freq, inte, ratio, rest, frac
 ' Set carrier frequency, in Hz
@@ -125,8 +125,8 @@ PUB CarrierFreq(Hz) | tmp_fc, tmp_band, plldiv, pfd_freq, inte, ratio, rest, fra
 '   Any other value is ignored
 '   NOTE: This setting takes effect only when transitioning to TX or RX state
     tmp_fc := tmp_band := $00
-    getProperty(core#GROUP_FREQ, 4, core#FREQ_CONTROL_INTE, @tmp_fc)
-    getProperty(core#GROUP_MODEM, 1, core#MODEM_CLKGEN_BAND, @tmp_band)
+    getproperty(core#GROUP_FREQ, 4, core#FREQ_CONTROL_INTE, @tmp_fc)
+    getproperty(core#GROUP_MODEM, 1, core#MODEM_CLKGEN_BAND, @tmp_band)
     case Hz
         142_000_000..175_000_000:
             plldiv := 24
@@ -136,15 +136,14 @@ PUB CarrierFreq(Hz) | tmp_fc, tmp_band, plldiv, pfd_freq, inte, ratio, rest, fra
             plldiv := 8
         850_000_000..1_050_000_000:
             plldiv := 4                             ' SI446x internal PLL is ~3.6GHz
-        OTHER:
+        other:
             inte := tmp_fc.byte[INTE_S]
             frac := (tmp_fc.byte[FRAC_MSB] << 16) | (tmp_fc.byte[FRAC_MID] << 8) | tmp_fc.byte[FRAC_LSB]
             tmp_band &= core#BITS_BAND
             plldiv := lookupz(tmp_band: 4, 6, 8, 12, 16, 24, 24, 24)
             inte *= FP_SCALE
-            rest := u64.MultDiv(frac, FP_SCALE, NINETN)
-            result := u64.MultDiv( (inte + rest), (F_XOSC_PRESCALE / plldiv), FP_SCALE)
-            return
+            rest := u64.multdiv(frac, FP_SCALE, NINETN)
+            return u64.multdiv( (inte + rest), (F_XOSC_PRESCALE / plldiv), FP_SCALE)
 
     tmp_band := lookdownz(plldiv: 4, 6, 8, 12, 16, 24, 24, 24)
     tmp_band |= (1 << core#FLD_SY_SEL)              ' Make sure the SY_SEL field is set
@@ -152,23 +151,23 @@ PUB CarrierFreq(Hz) | tmp_fc, tmp_band, plldiv, pfd_freq, inte, ratio, rest, fra
     pfd_freq := F_XOSC_PRESCALE / plldiv
     inte := (Hz / pfd_freq) - 1
     inte *= FP_SCALE
-    ratio := u64.MultDiv(Hz, FP_SCALE, pfd_freq)
+    ratio := u64.multdiv(Hz, FP_SCALE, pfd_freq)
     rest := ratio - inte
-    frac := u64.MultDiv(rest, 524_288, FP_SCALE)
+    frac := u64.multdiv(rest, 524_288, FP_SCALE)
 
     tmp_fc.byte[FRAC_MSB] := frac >> 16
     tmp_fc.byte[FRAC_MID] := (frac - tmp_fc.byte[FRAC_MSB] << 16) >> 8
     tmp_fc.byte[FRAC_LSB] := (frac - tmp_fc.byte[FRAC_MSB] << 16 - tmp_fc.byte[FRAC_MID] << 8)
     tmp_fc.byte[INTE_S] := inte / FP_SCALE
 
-    setProperty(core#GROUP_MODEM, 1, core#MODEM_CLKGEN_BAND, @tmp_band)
-    setProperty(core#GROUP_FREQ, 4, core#FREQ_CONTROL_INTE, @tmp_fc)
+    setproperty(core#GROUP_MODEM, 1, core#MODEM_CLKGEN_BAND, @tmp_band)
+    setproperty(core#GROUP_FREQ, 4, core#FREQ_CONTROL_INTE, @tmp_fc)
 
-PUB ClearInts
+PUB ClearInts{} | tmp
 
-    readReg(core#GET_INT_STATUS, 0, @result)
+    readreg(core#GET_INT_STATUS, 0, @tmp)
 
-PUB ClkTest(clkdiv)| tmp[2]
+PUB ClkTest(clkdiv) | tmp[2]
 ' Test system clock output, divided by clkdiv
 '   Valid values: 1, 2, 3, 7_5 (7.5), 10, 15, 30
 '   Any other value sets the divisor to 1
@@ -176,7 +175,7 @@ PUB ClkTest(clkdiv)| tmp[2]
     case clkdiv
         1, 2, 3, 7_5, 10, 15, 30:
             clkdiv := lookdownz(clkdiv: 1, 2, 3, 7_5, 10, 15, 30)
-        OTHER:
+        other:
             clkdiv := core#DIV_1
 
     tmp.byte[core#ARG_GPIO0] := core#PULL_EN | core#GPIO_DIV_CLK
@@ -187,58 +186,58 @@ PUB ClkTest(clkdiv)| tmp[2]
     tmp.byte[core#ARG_SDO] := core#PULL_EN | core#GPIO_SDO
     tmp.byte[core#ARG_GEN_CONFIG] := core#DRV_STRENGTH_HIGH
 
-    result := writeReg(core#GPIO_PIN_CFG, 7, @tmp)
+    result := writereg(core#GPIO_PIN_CFG, 7, @tmp)
     tmp[0] := 0
     tmp[1] := 0
     tmp := (1 << core#FLD_DIV_CLK_EN) | (clkdiv << core#FLD_DIV_CLK_SEL)
-    result := setProperty(core#GROUP_GLOBAL, 1, core#GLOBAL_CLK_CFG, @tmp)
+    result := setproperty(core#GROUP_GLOBAL, 1, core#GLOBAL_CLK_CFG, @tmp)
 
-PUB DataRate(bps): TX_DATA_RATE | MODEM_DATA_RATE, NCO_CLK_FREQ, TXOSR, NCOMOD
+PUB DataRate(rate): curr_rate | MODEM_DATA_RATE, NCO_CLK_FREQ, TXOSR, NCOMOD
 ' NCO_CLK_FREQ = (MODEM_DATA_RATE*Fxtal_Hz/MODEM_TX_NCO_MODE)
-' TX_DATA_RATE=(NCO_CLK_FREQ/TXOSR)
+' curr_rate=(NCO_CLK_FREQ/TXOSR)
 ' Defaults:
 ' NCO_CLK_FREQ = (1_000_000*30_000_000/30_000_000
-' TX_DATA_RATE=(1000000/10)
-' Data rate=100_000 bps
+' curr_rate=(1000000/10)
+' Data rate=100_000 rate
     MODEM_DATA_RATE := NCO_CLK_FREQ := TXOSR := NCOMOD := 0
-    getProperty(core#GROUP_MODEM, 3, core#MODEM_DATA_RATE, @MODEM_DATA_RATE)
-    getProperty(core#GROUP_MODEM, 4, core#MODEM_TX_NCO_MODE, @TXOSR)
-    case bps
+    getproperty(core#GROUP_MODEM, 3, core#MODEM_DATA_RATE, @MODEM_DATA_RATE)
+    getproperty(core#GROUP_MODEM, 4, core#MODEM_TX_NCO_MODE, @TXOSR)
+    case rate
         'TODO: Case for 40x?
         100..199_999:
             TXOSR := TXOSR_10X << 26
-            MODEM_DATA_RATE := bps'*10  299.300 303.500
+            MODEM_DATA_RATE := rate'*10  299.300 303.500
             NCOMOD := _fxtal/10
             TXOSR |= NCOMOD
 
         200_000..1_000_000:
             TXOSR := TXOSR_10X << 26
-            MODEM_DATA_RATE := bps*10
+            MODEM_DATA_RATE := rate*10
             NCOMOD := _fxtal
             TXOSR |= NCOMOD
 
-        OTHER:
+        other:
             NCOMOD := TXOSR & $3_FF_FF_FF
             TXOSR := lookupz((TXOSR >> 26): 10, 40, 20)
 '            NCO_CLK_FREQ := (MODEM_DATA_RATE * _fxtal) / NCOMOD
             if NCOMOD < _fxtal
-                NCO_CLK_FREQ := u64.MultDiv (MODEM_DATA_RATE, _fxtal/10, NCOMOD)
+                NCO_CLK_FREQ := u64.multdiv (MODEM_DATA_RATE, _fxtal/10, NCOMOD)
             else
-                NCO_CLK_FREQ := u64.MultDiv (MODEM_DATA_RATE, _fxtal, NCOMOD)'(x, num, denom)
-            TX_DATA_RATE := NCO_CLK_FREQ / TXOSR
-            return TX_DATA_RATE*10
+                NCO_CLK_FREQ := u64.multdiv (MODEM_DATA_RATE, _fxtal, NCOMOD)'(x, num, denom)
+            curr_rate := NCO_CLK_FREQ / TXOSR
+            return curr_rate*10
 
-    setProperty(core#GROUP_MODEM, 3, core#MODEM_DATA_RATE, @MODEM_DATA_RATE)
-    setProperty(core#GROUP_MODEM, 4, core#MODEM_TX_NCO_MODE, @TXOSR)
+    setproperty(core#GROUP_MODEM, 3, core#MODEM_DATA_RATE, @MODEM_DATA_RATE)
+    setproperty(core#GROUP_MODEM, 4, core#MODEM_TX_NCO_MODE, @TXOSR)
 
-PUB DeviceID | tmp[2]
+PUB DeviceID{}: id | tmp[2]
 ' Read the Part ID from the device
 '   Returns: 4-digit part ID
     tmp := $00
-    readReg(core#PART_INFO, 8, @tmp)
+    readreg(core#PART_INFO, 8, @tmp)
     return (tmp.byte[core#REPL_PARTMSB] << 8) | tmp.byte[core#REPL_PARTLSB]
 
-PUB FastRespRegCfg(reg, mode) | tmp
+PUB FastRespRegCfg(reg, mode): resp | tmp
 ' Configure the information available in the Fast-Response Registers A, B, C, D
 '   Valid values:
 '       reg: FRR_A (0), FRR_B (1), FRR_C (2), FRR_D (3)
@@ -257,74 +256,73 @@ PUB FastRespRegCfg(reg, mode) | tmp
     tmp := $00
     case reg
         FRR_A..FRR_D:
-        OTHER:
+        other:
             return
 
-    getProperty(core#GROUP_FRR_CTL, 1, reg, @tmp)
+    getproperty(core#GROUP_FRR_CTL, 1, reg, @tmp)
 
     case mode
         FRRMODE_DISABLED..FRRMODE_LATCHED_RSSI:
-        OTHER:
+        other:
             return tmp
 
-    setProperty(core#GROUP_FRR_CTL, 1, reg, @mode)
+    setproperty(core#GROUP_FRR_CTL, 1, reg, @mode)
 
-PUB FIFORXBytes
+PUB FIFORXBytes{}: rxcount
 ' Returns: number of bytes in the RX FIFO
-    readReg(core#FIFO_INFO, 1, @result)
+    readreg(core#FIFO_INFO, 1, @rxcount)
 
-PUB FIFOTXBytes
+PUB FIFOTXBytes{}: txcount
 ' Returns: number of bytes in the TX FIFO
-    readReg(core#FIFO_INFO, 2, @result)
-    result >>= 8
+    readreg(core#FIFO_INFO, 2, @txcount)
+    txcount >>= 8
 
-PUB FlushRX | tmp
+PUB FlushRX{} | tmp
 ' Flush the RX FIFO
     tmp := %1 << core#FLD_RX
-    result := writeReg(core#FIFO_INFO, 1, @tmp)
+    writereg(core#FIFO_INFO, 1, @tmp)
 
-PUB FlushTX | tmp
+PUB FlushTX{} | tmp
 ' Flush the TX FIFO
     tmp := %1
-    result := writeReg(core#FIFO_INFO, 1, @tmp)
+    writereg(core#FIFO_INFO, 1, @tmp)
 
-PUB FreqDeviation(Hz) | tmp, outdiv, tmp1, tmp2
+PUB FreqDeviation(freq): curr_freq | tmp, outdiv, tmp1, tmp2
 ' Set carrier frequency deviation, in Hz
 '   Valid values: 29..1_500_000
 '   Any other value polls the chip and returns the current setting
-'   NOTE: The resolution of the Si446x synthesizer is 28.6Hz. Value set will be nearest multiple.
+'   NOTE: The resolution of the Si446x synthesizer is 28.6freq. Value set will be nearest multiple.
     tmp := outdiv := $00
-    getProperty(core#GROUP_MODEM, 3, core#MODEM_FREQ_DEV, @tmp)
-    getProperty(core#GROUP_MODEM, 1, core#MODEM_CLKGEN_BAND, @outdiv)
+    getproperty(core#GROUP_MODEM, 3, core#MODEM_FREQ_DEV, @tmp)
+    getproperty(core#GROUP_MODEM, 1, core#MODEM_CLKGEN_BAND, @outdiv)
     outdiv := lookupz(outdiv & core#BITS_BAND: 4, 6, 8, 12, 16, 24, 24, 24)
-    case Hz
+    case freq
         29..1_500_000:'28.6hz res
             tmp1 := NINETN * outdiv
             tmp2 := NPRESC * F_XOSC
-            Hz := u64.MultDiv(tmp1, Hz, tmp2)
-        OTHER:
+            freq := u64.multdiv(tmp1, freq, tmp2)
+        other:
             tmp1 := NPRESC * F_XOSC
             tmp2 := NINETN * outdiv
-            result := u64.MultDiv(tmp, tmp1, tmp2)
-            return
+            return u64.multdiv(tmp, tmp1, tmp2)
 
-    setProperty(core#GROUP_MODEM, 3, core#MODEM_FREQ_DEV, @Hz)
+    setproperty(core#GROUP_MODEM, 3, core#MODEM_FREQ_DEV, @freq)
 
-PUB Idle
+PUB Idle{}
 ' Change transceiver to idle state
-    OpMode(STATE_SPI_ACTIVE)
+    opmode(STATE_SPI_ACTIVE)
 
-PUB IntStatus(buff_addr) | tmp[2]
-' Read interrupt status into buffer at buff_addr
+PUB IntStatus(ptr_buff) | tmp[2]
+' Read interrupt status into buffer at ptr_buff
 '   NOTE: Buffer must be at least 8 bytes
     tmp.byte[core#ARG_PH_CLR_PEND] := %1111_1111
     tmp.byte[core#ARG_MODEM_CLR_PEND] := %1111_1111
     tmp.byte[core#ARG_CHIP_CLR_PEND] := %0111_1111
-    readReg(core#GET_INT_STATUS, 8, @tmp)
-    longmove(buff_addr, @tmp, 2)
+    readreg(core#GET_INT_STATUS, 8, @tmp)
+    longmove(ptr_buff, @tmp, 2)
 
-PUB Modulation(type) | tmp
-' Set modulation type
+PUB Modulation(mode): curr_mode | tmp
+' Set modulation mode
 '   Valid values:
 '       MOD_CW (0): Continuous Wave
 '       MOD_OOK (1): On-Off Keying
@@ -334,21 +332,21 @@ PUB Modulation(type) | tmp
 '       MOD_4GFSK (5): 4-level Gaussian Frequency Shift Keying
 '   Any other value polls the chip and returns the current setting
     tmp := $00
-    getProperty(core#GROUP_MODEM, 1, core#MODEM_MOD_TYPE, @tmp)
-    case type
+    getproperty(core#GROUP_MODEM, 1, core#MODEM_MOD_TYPE, @tmp)
+    case mode
         MOD_CW, MOD_OOK, MOD_2FSK, MOD_2GFSK, MOD_4FSK, MOD_4GFSK:
-        OTHER:
+        other:
             return (tmp & core#BITS_MOD_TYPE)
 
     tmp &= core#MASK_MOD_TYPE
-    tmp := (tmp | type) & core#MASK_MODEM_MOD_TYPE
-    setProperty(core#GROUP_MODEM, 1, core#MODEM_MOD_TYPE, @tmp)
+    tmp := (tmp | mode) & core#MASK_MODEM_MOD_TYPE
+    setproperty(core#GROUP_MODEM, 1, core#MODEM_MOD_TYPE, @tmp)
 
-PUB NoOp
+PUB NoOp{} | tmp
 
-    return readReg(core#NOOP, 0, @result)
+    readreg(core#NOOP, 0, @tmp)
 
-PUB OpMode(new_state) | tmp
+PUB OpMode(new_state): curr_state
 ' Manually switch chip to desired operating state
 '   Valid values:
 '       STATE_SLEEP (1): Put chip in SLEEP or STANDBY state
@@ -359,26 +357,27 @@ PUB OpMode(new_state) | tmp
 '       STATE_TX (7): TX state
 '       STATE_RX (8): RX state
 '   Any other value polls the chip and returns the current state
-    tmp := $00
-    readReg(core#FAST_RESP_C, 1, @tmp)
+    curr_state := $00
+    readreg(core#FAST_RESP_C, 1, @curr_state)
     case new_state
-        STATE_SLEEP, STATE_SPI_ACTIVE, STATE_READY, STATE_TX_TUNE, STATE_RX_TUNE, STATE_TX, STATE_RX:
-        OTHER:
-            return tmp
+        STATE_SLEEP, STATE_SPI_ACTIVE, STATE_READY, STATE_TX_TUNE,{
+        } STATE_RX_TUNE, STATE_TX, STATE_RX:
+        other:
+            return curr_state
 
-    result := writeReg(core#CHANGE_STATE, 1, @new_state)
+    writereg(core#CHANGE_STATE, 1, @new_state)
 
-PUB PayloadLen(bytes) | tmp
+PUB PayloadLen(len): curr_len
 ' Set payload length, in bytes
 '   Valid values: 0..8191
 '   Any other value polls the chip and returns the current setting
-    getProperty(core#GROUP_PKT, 2, core#PKT_FIELD_1_LENGTH, @tmp)
-    case bytes
+    getproperty(core#GROUP_PKT, 2, core#PKT_FIELD_1_LENGTH, @curr_len)
+    case len
         0..8191:
-        OTHER:
-            return tmp
+        other:
+            return curr_len
 
-    setProperty(core#GROUP_PKT, 2, core#PKT_FIELD_1_LENGTH, @bytes)
+    setproperty(core#GROUP_PKT, 2, core#PKT_FIELD_1_LENGTH, @len)
 
 PUB PowerUp(osc_freq) | tmp[2]
 ' Perform device powerup, and specify oscillator frequency, in Hz
@@ -393,32 +392,32 @@ PUB PowerUp(osc_freq) | tmp[2]
             tmp.byte[core#ARG_XO_FREQ_LSMB] := osc_freq.byte[1]
             tmp.byte[core#ARG_XO_FREQ_LSB] := osc_freq.byte[0]
             _fxtal := osc_freq
-        OTHER:
+        other:
             tmp.byte[core#ARG_XO_FREQ_MSB] := $01
             tmp.byte[core#ARG_XO_FREQ_MSMB] := $C9
             tmp.byte[core#ARG_XO_FREQ_LSMB] := $C3
             tmp.byte[core#ARG_XO_FREQ_LSB] := $80
             _fxtal := 30_000_000
-    result := writeReg(core#POWER_UP, 6, @tmp)
+    writereg(core#POWER_UP, 6, @tmp)
 
-PUB PreambleLen(bytes) | tmp
+PUB PreambleLen(len): curr_len
 ' Set preamble length, in bytes
 '   Valid values: 0..255
 '   Any other value polls the chip and returns the current setting
 '   NOTE: 0 effectively disables transmitting the preamble. In this case, the sync word will be the first transmitted field.
-    tmp := $00
-    getProperty(core#GROUP_PREAMBLE, 1, core#PREAMBLE_TX_LENGTH, @tmp)
-    case bytes
+    curr_len := $00
+    getproperty(core#GROUP_PREAMBLE, 1, core#PREAMBLE_TX_LENGTH, @curr_len)
+    case len
         0..255:
-        OTHER:
-            return tmp
+        other:
+            return curr_len
 
-    setProperty(core#GROUP_PREAMBLE, 1, core#PREAMBLE_TX_LENGTH, @bytes)
+    setproperty(core#GROUP_PREAMBLE, 1, core#PREAMBLE_TX_LENGTH, @len)
 
 PUB RXBandwidth(Hz)
-
+'XXX WIP
     Hz &= $F0
-    setProperty(core#GROUP_MODEM, 1, core#MODEM_DECIMATION_CFG1, @Hz)
+    setproperty(core#GROUP_MODEM, 1, core#MODEM_DECIMATION_CFG1, @Hz)
 
 PUB RXMode | cmd_packet[2]
 ' Change chip state to receive
@@ -429,45 +428,45 @@ PUB RXMode | cmd_packet[2]
     cmd_packet.byte[4] := 0                                         ' Post-timeout state
     cmd_packet.byte[5] := 0                                         ' Post-valid packet state
     cmd_packet.byte[6] := 0                                         ' Post-invalid packet state
-    writeReg(core#START_RX, 7, @cmd_packet)
-    clearToSend(DESELECT_AFTER)
+    writereg(core#START_RX, 7, @cmd_packet)
+    cleartosend(DESELECT_AFTER)
 
-PUB RXPayload(nr_bytes, buff_addr)
-' Read nr_bytes from RX FIFO into buff_addr
+PUB RXPayload(nr_bytes, ptr_buff)
+' Read nr_bytes from RX FIFO into ptr_buff
 '   NOTE: Buffer must be large enough to hold nr_bytes
-    readReg(core#READ_RX_FIFO, nr_bytes, buff_addr)
+    readreg(core#READ_RX_FIFO, nr_bytes, ptr_buff)
 
-PUB SyncWord(syncbits) | tmp
+PUB SyncWord(syncwd): curr_word
 ' Set sync word for TX and RX operation
 '   Valid values: $00_00_00_01..$FF_FF_FF_FF
 '   $0 polls the chip and returns the current setting
-    tmp := $00
-    getProperty(core#GROUP_SYNC, 4, core#SYNC_BITS_MSB, @tmp)
-    case syncbits
+    curr_word := $00
+    getproperty(core#GROUP_SYNC, 4, core#SYNC_BITS_MSB, @curr_word)
+    case syncwd
         $00000001..$7FFFFFFF, $80000000..$FFFFFFFF:
-            syncbits := swap(syncbits)
-        OTHER:          ' Disallow all zeroes for sync word to accomodate querying
-            return swap(tmp)
+            syncwd := swap(syncwd)
+        other:          ' Disallow all zeroes for sync word to accomodate querying
+            return swap(curr_word)
 
-    result := setProperty(core#GROUP_SYNC, 4, core#SYNC_BITS_MSB, @syncbits)
+    result := setproperty(core#GROUP_SYNC, 4, core#SYNC_BITS_MSB, @syncwd)
 
-PUB SyncWordLen(length) | tmp
+PUB SyncWordLen(length): curr_len
 ' Set sync word length, in bytes
 '   Valid values: 1..4
 '   Any other value polls the chip and returns the current setting
-    tmp := $00
-    getProperty(core#GROUP_SYNC, 1, core#SYNC_CONFIG, @tmp)
+    curr_len := $00
+    getproperty(core#GROUP_SYNC, 1, core#SYNC_CONFIG, @curr_len)
     case length
         1..4:
             length -= 1
-        OTHER:
-            return (tmp & core#BITS_LENGTH) + 1
+        other:
+            return (curr_len & core#BITS_LENGTH) + 1
 
-    tmp &= core#MASK_LENGTH
-    tmp := (tmp | length) & core#MASK_SYNC_CONFIG
-    result := setProperty(core#GROUP_SYNC, 1, core#SYNC_CONFIG, @tmp)
+    curr_len &= core#MASK_LENGTH
+    curr_len := (curr_len | length) & core#MASK_SYNC_CONFIG
+    result := setproperty(core#GROUP_SYNC, 1, core#SYNC_CONFIG, @curr_len)
 
-PUB TXMode | cmd_packet[2]
+PUB TXMode{} | cmd_packet[2]
 ' Change chip state to transmit
     cmd_packet.byte[0] := 0                                         ' Channel
     cmd_packet.byte[1] := (STATE_TX_TUNE << core#FLD_TXCOMPLETE_STATE)   ' Condition
@@ -475,26 +474,26 @@ PUB TXMode | cmd_packet[2]
     cmd_packet.byte[3] := 0                                         '   LSB
     cmd_packet.byte[4] := 0                                         ' Inter-packet delay (uS)
     cmd_packet.byte[5] := 0                                         ' Repeat packet nr_times
-    writeReg(core#START_TX, 6, @cmd_packet)
-    clearToSend(DESELECT_AFTER)
+    writereg(core#START_TX, 6, @cmd_packet)
+    cleartosend(DESELECT_AFTER)
 
-PUB TXPayload(nr_bytes, buff_addr)
+PUB TXPayload(nr_bytes, ptr_buff)
 ' Transmit data queued in FIFO
-    writeReg(core#WRITE_TX_FIFO, nr_bytes, buff_addr)
+    writereg(core#WRITE_TX_FIFO, nr_bytes, ptr_buff)
 
-PUB TXPower(dBm) | tmp
-' Set transmit power level, in dBm
+PUB TXPower(pwr): curr_pwr
+' Set transmit power level, in pwr
 '   Valid values: 0..127
 '   Any other value polls the chip and returns the current setting
-'   NOTE: XXX This is currently not taken in dBm, but register value, as the datasheet doesn't provide a formula for calculating power level.
-    tmp := $00
-    getProperty(core#GROUP_PA, 1, core#PA_POWER_LEVEL, @tmp)
-    case dBm
+'   NOTE: XXX This is currently not taken in pwr, but register value, as the datasheet doesn't provide a formula for calculating power level.
+    curr_pwr := $00
+    getproperty(core#GROUP_PA, 1, core#PA_POWER_LEVEL, @curr_pwr)
+    case pwr
         0..127:
-        OTHER:
-            return tmp & core#BITS_DDAC
+        other:
+            return curr_pwr & core#BITS_DDAC
 
-    setProperty(core#GROUP_PA, 1, core#PA_POWER_LEVEL, @dBm)
+    setproperty(core#GROUP_PA, 1, core#PA_POWER_LEVEL, @pwr)
 
 PRI swap(swp_long) | i
 
@@ -509,103 +508,103 @@ PRI clearToSend(deselect)
 '                               CTS check.
 '   Returns: TRUE if clear to send, FALSE otherwise
     repeat
-        io.Low(_CS)
-        spi.SHIFTOUT (_MOSI, _SCK, core#MOSI_BITORDER, 8, core#READ_CMD_BUFF)
-        result := spi.SHIFTIN (_MISO, _SCK, core#MISO_BITORDER, 8)
+        io.low(_CS)
+        spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, core#READ_CMD_BUFF)
+        result := spi.shiftin(_MISO, _SCK, core#MISO_BITORDER, 8)
         if result <> $FF
-            io.High(_CS)
+            io.high(_CS)
     until result == $FF
     if deselect
-        io.High(_CS)
+        io.high(_CS)
 
     return' (result == $FF)
 
-PRI getProperty (group, nr_props, start_prop, buff_addr) | tmp, i
-' Read one or more properties from the device into buffer at buff_addr
+PRI getProperty(group, nr_props, start_prop, ptr_buff) | tmp, i
+' Read one or more properties from the device into buffer at ptr_buff
     tmp.byte[0] := core#GET_PROPERTY
     tmp.byte[1] := group
     tmp.byte[2] := nr_props
     tmp.byte[3] := start_prop
-    io.Low(_CS)
+    io.low(_CS)
     repeat i from 0 to 3
-        spi.SHIFTOUT (_MOSI, _SCK, core#MOSI_BITORDER, 8, tmp.byte[i])
-    io.High(_CS)
-    clearToSend (NO_DESELECT_AFTER) ' Check CTS, but leave the chip selected afterwards, because
+        spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, tmp.byte[i])
+    io.high(_CS)
+    cleartosend(NO_DESELECT_AFTER) ' Check CTS, but leave the chip selected afterwards, because
     repeat i from nr_props-1 to 0   '   the data needs to be read in the same transaction as the check.
-        byte[buff_addr][i] := spi.SHIFTIN (_MISO, _SCK, core#MISO_BITORDER, 8)
-    io.High(_CS)
+        byte[ptr_buff][i] := spi.shiftin(_MISO, _SCK, core#MISO_BITORDER, 8)
+    io.high(_CS)
 
-PRI setProperty (group, nr_props, start_prop, buff_addr) | tmp, i
-' Write one or more properties to the device from buffer at buff_addr
-    clearToSend (DESELECT_AFTER)
+PRI setProperty(group, nr_props, start_prop, ptr_buff) | tmp, i
+' Write one or more properties to the device from buffer at ptr_buff
+    cleartosend (DESELECT_AFTER)
     tmp.byte[0] := core#SET_PROPERTY
     tmp.byte[1] := group
     tmp.byte[2] := nr_props
     tmp.byte[3] := start_prop
-    io.Low(_CS)
+    io.low(_CS)
     repeat i from 0 to 3
-        spi.SHIFTOUT (_MOSI, _SCK, core#MOSI_BITORDER, 8, tmp.byte[i])
+        spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, tmp.byte[i])
     repeat i from nr_props-1 to 0
-        spi.SHIFTOUT (_MOSI, _SCK, core#MOSI_BITORDER, 8, byte[buff_addr][i])
-    io.High(_CS)
-    clearToSend (DESELECT_AFTER)
+        spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, byte[ptr_buff][i])
+    io.high(_CS)
+    cleartosend(DESELECT_AFTER)
 
-PRI readReg(reg, nr_bytes, buff_addr) | tmp, i
+PRI readreg(reg_nr, nr_bytes, ptr_buff) | tmp, i
 
-    case reg
+    case reg_nr
 {        core#GET_PROPERTY:
-            if clearToSend(DESELECT_AFTER) == CLEAR
-                io.Low(_CS)
-                spi.SHIFTOUT (_MOSI, _SCK, core#MOSI_BITORDER, 8, reg)
+            if cleartosend(DESELECT_AFTER) == CLEAR
+                io.low(_CS)
+                spi.shiftout (_MOSI, _SCK, core#MOSI_BITORDER, 8, reg_nr)
                 repeat i from 0 to 2
-                    spi.SHIFTOUT (_MOSI, _SCK, core#MOSI_BITORDER, 8, byte[buff_addr][i])
-                io.High(_CS)
-                result := clearToSend(NO_DESELECT_AFTER)
+                    spi.shiftout (_MOSI, _SCK, core#MOSI_BITORDER, 8, byte[ptr_buff][i])
+                io.high(_CS)
+                result := cleartosend(NO_DESELECT_AFTER)
                 if result == CLEAR
                     repeat i from 0 to nr_bytes-1
-                        byte[buff_addr][i] := spi.SHIFTIN (_MISO, _SCK, core#MISO_BITORDER, 8)
-                    io.High(_CS)
+                        byte[ptr_buff][i] := spi.shiftin (_MISO, _SCK, core#MISO_BITORDER, 8)
+                    io.high(_CS)
                 else
-                    io.High(_CS)
+                    io.high(_CS)
                     return $E000_0002
 }
         core#GET_INT_STATUS:
-            result := clearToSend(DESELECT_AFTER)
+            result := cleartosend(DESELECT_AFTER)
             if result == CLEAR
-                io.Low(_CS)
-                spi.SHIFTOUT (_MOSI, _SCK, core#MOSI_BITORDER, 8, reg)
+                io.low(_CS)
+                spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg_nr)
                 case nr_bytes
                     0:              'Clear interrupts if no args given
-                        io.High(_CS)
+                        io.high(_CS)
                         return
-                    OTHER:
+                    other:
                         repeat i from 0 to 2
-                            spi.SHIFTOUT (_MOSI, _SCK, core#MOSI_BITORDER, 8, byte[buff_addr][i])
-                            byte[buff_addr][i] := 0
-                        io.High(_CS)
+                            spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, byte[ptr_buff][i])
+                            byte[ptr_buff][i] := 0
+                        io.high(_CS)
 
-                result := clearToSend(NO_DESELECT_AFTER)
+                result := cleartosend(NO_DESELECT_AFTER)
                 if result == CLEAR
                     repeat i from 0 to nr_bytes-1
-                        byte[buff_addr][i] := spi.SHIFTIN (_MISO, _SCK, core#MISO_BITORDER, 8)
-                    io.High(_CS)
+                        byte[ptr_buff][i] := spi.shiftin(_MISO, _SCK, core#MISO_BITORDER, 8)
+                    io.high(_CS)
                 else
-                    io.High(_CS)
+                    io.high(_CS)
                     return $E000_0003
 
         $01..$02, $10..$11, $13..$17, $1A, $20..$23, $31..$34, $36..$37, $44:
-            if clearToSend(DESELECT_AFTER) == CLEAR
-                io.Low(_CS)
-                spi.SHIFTOUT (_MOSI, _SCK, core#MOSI_BITORDER, 8, reg)
-                io.High(_CS)
+            if cleartosend(DESELECT_AFTER) == CLEAR
+                io.low(_CS)
+                spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg_nr)
+                io.high(_CS)
 
-                result := clearToSend(NO_DESELECT_AFTER)
+                result := cleartosend(NO_DESELECT_AFTER)
                 if result == CLEAR
                     repeat i from 0 to nr_bytes-1
-                        byte[buff_addr][i] := spi.SHIFTIN (_MISO, _SCK, core#MISO_BITORDER, 8)
-                    io.High(_CS)
+                        byte[ptr_buff][i] := spi.shiftin(_MISO, _SCK, core#MISO_BITORDER, 8)
+                    io.high(_CS)
                 else
-                    io.High(_CS)
+                    io.high(_CS)
                     return $E000_0001
             else
                 return $E000_0000
@@ -613,33 +612,34 @@ PRI readReg(reg, nr_bytes, buff_addr) | tmp, i
         core#WRITE_TX_FIFO:
 
         core#READ_RX_FIFO:
-            io.Low(_CS)
-            spi.SHIFTOUT (_MOSI, _SCK, core#MOSI_BITORDER, 8, reg)
+            io.low(_CS)
+            spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg_nr)
             repeat i from 0 to nr_bytes-1
-                byte[buff_addr][i] := spi.SHIFTIN (_MISO, _SCK, core#MISO_BITORDER, 8)
-            io.High(_CS)
+                byte[ptr_buff][i] := spi.shiftin(_MISO, _SCK, core#MISO_BITORDER, 8)
+            io.high(_CS)
 
         core#FAST_RESP_A, core#FAST_RESP_B, core#FAST_RESP_C, core#FAST_RESP_D:         'Fast-response registers (FRR's) don't require checking the CTS flag
-            io.Low(_CS)
-            spi.SHIFTOUT (_MOSI, _SCK, core#MOSI_BITORDER, 8, reg)
+            io.low(_CS)
+            spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg_nr)
             repeat i from 0 to nr_bytes-1
-                byte[buff_addr][i] := spi.SHIFTIN (_MISO, _SCK, core#MISO_BITORDER, 8)
-            io.High(_CS)
-        OTHER:
+                byte[ptr_buff][i] := spi.shiftin(_MISO, _SCK, core#MISO_BITORDER, 8)
+            io.high(_CS)
+        other:
             return FALSE
 
-PRI writeReg(reg, nr_bytes, buf_addr) | i, tmp[3]
-' Write nr_bytes to register 'reg' stored at buf_addr
-    if result := clearToSend(DESELECT_AFTER)
-        io.Low(_CS)
-        spi.SHIFTOUT(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg)
+PRI writeReg(reg_nr, nr_bytes, ptr_buff) | i, tmp[3]
+' Write nr_bytes to register 'reg_nr' stored at ptr_buff
+'XXX no validation
+    if result := cleartosend(DESELECT_AFTER)
+        io.low(_CS)
+        spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg_nr)
     
         case nr_bytes
             1..64:
                 repeat i from 0 to nr_bytes-1
-                    spi.SHIFTOUT(_MOSI, _SCK, core#MOSI_BITORDER, 8, byte[buf_addr][i])
-            OTHER:
-        io.High(_CS)
+                    spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, byte[ptr_buff][i])
+            other:
+        io.high(_CS)
         return
     else
         return $E000_0000
