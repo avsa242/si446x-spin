@@ -82,7 +82,7 @@ VAR
 
 OBJ
 
-    spi : "com.spi.bitbang"
+    spi : "com.spi.10mhz"
     core: "core.con.si446x"
     time: "time"
     io  : "io"

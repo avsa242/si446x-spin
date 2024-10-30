@@ -80,39 +80,37 @@ CON
 VAR
 
     long _fxtal
-    byte _CS, _MOSI, _MISO, _SCK
+    byte _CS
 
 OBJ
 
-    spi : "com.spi.4w"                                             'PASM SPI Driver
+    spi : "com.spi.1mhz"                                             'PASM SPI Driver
     core: "core.con.si446x"
     time: "time"
-    io  : "io"
     u64 : "math.unsigned64"
 
 PUB Null
 ''This is not a top-level object
 
-PUB Start(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN): okay
+PUB Start(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN): status
 
-    if okay := spi.start (core#SCK_DELAY, core#CPOL)              'SPI Object Started?
-        time.msleep(core#TPOR)
+    if (status := spi.init(SCK_PIN, MOSI_PIN, MISO_PIN, core#SPI_MODE))
+        time.usleep(core#T_POR)
         _CS := CS_PIN
-        _MOSI := MOSI_PIN
-        _MISO := MISO_PIN
-        _SCK := SCK_PIN
 
-        io.high(_CS)
-        io.output(_CS)
+        outa[_CS]:=1
+        dira[_CS]:=1
         if lookdown(deviceid{}: $4460, $4461, $4463, $4464)
             if powerup(core#OSC_FREQ_NOMINAL) == $FF
-                return okay
-
-    return FALSE                                                'If we got here, something went wrong
+                return deviceid()
+    ' if this point is reached, something above failed
+    ' Double check I/O pin assignments, connections, power
+    ' Lastly - make sure you have at least one free core/cog
+    return FALSE
 
 PUB Stop{}
 
-    spi.stop{}
+    spi.deinit{}
 
 PUB CarrierFreq(Hz) | tmp_fc, tmp_band, plldiv, pfd_freq, inte, ratio, rest, frac
 ' Set carrier frequency, in Hz
@@ -379,7 +377,7 @@ PUB PayloadLen(len): curr_len
 
     setproperty(core#GROUP_PKT, 2, core#PKT_FIELD_1_LENGTH, @len)
 
-PUB PowerUp(osc_freq) | tmp[2]
+PUB PowerUp(osc_freq): r | tmp[2]
 ' Perform device powerup, and specify oscillator frequency, in Hz
 '   Valid values: 25_000_000 to 32_000_000
 '   Any other value sets the nominal 30_000_000
@@ -398,7 +396,7 @@ PUB PowerUp(osc_freq) | tmp[2]
             tmp.byte[core#ARG_XO_FREQ_LSMB] := $C3
             tmp.byte[core#ARG_XO_FREQ_LSB] := $80
             _fxtal := 30_000_000
-    writereg(core#POWER_UP, 6, @tmp)
+    r := writereg(core#POWER_UP, 6, @tmp)
 
 PUB PreambleLen(len): curr_len
 ' Set preamble length, in bytes
@@ -500,7 +498,7 @@ PRI swap(swp_long) | i
     repeat i from 0 to 3
         result.byte[i] := swp_long.byte[3-i]
 
-PRI clearToSend(deselect)
+PRI clearToSend(deselect=false)
 ' Check the CTS (Clear-to-Send) status from the device
 '   Valid values:
 '       DESELECT_AFTER (-1): Raise CS after checking
@@ -508,14 +506,16 @@ PRI clearToSend(deselect)
 '                               CTS check.
 '   Returns: TRUE if clear to send, FALSE otherwise
     repeat
-        io.low(_CS)
-        spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, core#READ_CMD_BUFF)
-        result := spi.shiftin(_MISO, _SCK, core#MISO_BITORDER, 8)
+        outa[_CS] := 0
+'        spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, core#READ_CMD_BUFF)
+'        result := spi.shiftin(_MISO, _SCK, core#MISO_BITORDER, 8)
+        spi.wr_byte(core#READ_CMD_BUFF)
+        result := spi.rd_byte{}
         if result <> $FF
-            io.high(_CS)
+            outa[_CS] := 1
     until result == $FF
     if deselect
-        io.high(_CS)
+        outa[_CS] := 1
 
     return' (result == $FF)
 
@@ -525,14 +525,16 @@ PRI getProperty(group, nr_props, start_prop, ptr_buff) | tmp, i
     tmp.byte[1] := group
     tmp.byte[2] := nr_props
     tmp.byte[3] := start_prop
-    io.low(_CS)
-    repeat i from 0 to 3
-        spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, tmp.byte[i])
-    io.high(_CS)
+    outa[_CS] := 0
+'    repeat i from 0 to 3
+'        spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, tmp.byte[i])
+    spi.wrblock_lsbf(@tmp, 4)
+    outa[_CS] := 1
     cleartosend(NO_DESELECT_AFTER) ' Check CTS, but leave the chip selected afterwards, because
-    repeat i from nr_props-1 to 0   '   the data needs to be read in the same transaction as the check.
-        byte[ptr_buff][i] := spi.shiftin(_MISO, _SCK, core#MISO_BITORDER, 8)
-    io.high(_CS)
+'    repeat i from nr_props-1 to 0   '   the data needs to be read in the same transaction as the check.
+'        byte[ptr_buff][i] := spi.shiftin(_MISO, _SCK, core#MISO_BITORDER, 8)
+    spi.rdblock_msbf(ptr_buff, nr_props)
+    outa[_CS] := 1
 
 PRI setProperty(group, nr_props, start_prop, ptr_buff) | tmp, i
 ' Write one or more properties to the device from buffer at ptr_buff
@@ -541,12 +543,14 @@ PRI setProperty(group, nr_props, start_prop, ptr_buff) | tmp, i
     tmp.byte[1] := group
     tmp.byte[2] := nr_props
     tmp.byte[3] := start_prop
-    io.low(_CS)
-    repeat i from 0 to 3
-        spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, tmp.byte[i])
-    repeat i from nr_props-1 to 0
-        spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, byte[ptr_buff][i])
-    io.high(_CS)
+    outa[_CS] := 0
+'    repeat i from 0 to 3
+'        spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, tmp.byte[i])
+'    repeat i from nr_props-1 to 0
+'        spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, byte[ptr_buff][i])
+    spi.wrblock_lsbf(@tmp, 4)
+    spi.wrblock_msbf(ptr_buff, nr_props)
+    outa[_CS] := 1
     cleartosend(DESELECT_AFTER)
 
 PRI readreg(reg_nr, nr_bytes, ptr_buff) | tmp, i
@@ -554,57 +558,62 @@ PRI readreg(reg_nr, nr_bytes, ptr_buff) | tmp, i
     case reg_nr
 {        core#GET_PROPERTY:
             if cleartosend(DESELECT_AFTER) == CLEAR
-                io.low(_CS)
+                outa[_CS] := 0
                 spi.shiftout (_MOSI, _SCK, core#MOSI_BITORDER, 8, reg_nr)
                 repeat i from 0 to 2
                     spi.shiftout (_MOSI, _SCK, core#MOSI_BITORDER, 8, byte[ptr_buff][i])
-                io.high(_CS)
+                outa[_CS] := 1
                 result := cleartosend(NO_DESELECT_AFTER)
                 if result == CLEAR
                     repeat i from 0 to nr_bytes-1
                         byte[ptr_buff][i] := spi.shiftin (_MISO, _SCK, core#MISO_BITORDER, 8)
-                    io.high(_CS)
+                    outa[_CS] := 1
                 else
-                    io.high(_CS)
+                    outa[_CS] := 1
                     return $E000_0002
 }
         core#GET_INT_STATUS:
             result := cleartosend(DESELECT_AFTER)
             if result == CLEAR
-                io.low(_CS)
-                spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg_nr)
+                outa[_CS] := 0
+'                spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg_nr)
+                spi.wr_byte(reg_nr)
                 case nr_bytes
                     0:              'Clear interrupts if no args given
-                        io.high(_CS)
+                        outa[_CS] := 1
                         return
                     other:
-                        repeat i from 0 to 2
-                            spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, byte[ptr_buff][i])
-                            byte[ptr_buff][i] := 0
-                        io.high(_CS)
+'                        repeat i from 0 to 2
+'                            spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, byte[ptr_buff][i])
+'                            byte[ptr_buff][i] := 0
+                        spi.wrblock_lsbf(ptr_buff, 3)
+                        outa[_CS] := 1
 
                 result := cleartosend(NO_DESELECT_AFTER)
                 if result == CLEAR
-                    repeat i from 0 to nr_bytes-1
-                        byte[ptr_buff][i] := spi.shiftin(_MISO, _SCK, core#MISO_BITORDER, 8)
-                    io.high(_CS)
+'                    repeat i from 0 to nr_bytes-1
+'                        byte[ptr_buff][i] := spi.shiftin(_MISO, _SCK, core#MISO_BITORDER, 8)
+                    spi.rdblock_lsbf(ptr_buff, nr_bytes)
+                    outa[_CS] := 1
                 else
-                    io.high(_CS)
+                    outa[_CS] := 1
                     return $E000_0003
 
         $01..$02, $10..$11, $13..$17, $1A, $20..$23, $31..$34, $36..$37, $44:
             if cleartosend(DESELECT_AFTER) == CLEAR
-                io.low(_CS)
-                spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg_nr)
-                io.high(_CS)
+                outa[_CS] := 0
+'                spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg_nr)
+                spi.wr_byte(reg_nr)
+                outa[_CS] := 1
 
                 result := cleartosend(NO_DESELECT_AFTER)
                 if result == CLEAR
-                    repeat i from 0 to nr_bytes-1
-                        byte[ptr_buff][i] := spi.shiftin(_MISO, _SCK, core#MISO_BITORDER, 8)
-                    io.high(_CS)
+'                    repeat i from 0 to nr_bytes-1
+'                        byte[ptr_buff][i] := spi.shiftin(_MISO, _SCK, core#MISO_BITORDER, 8)
+                    spi.rdblock_lsbf(ptr_buff, nr_bytes)
+                    outa[_CS] := 1
                 else
-                    io.high(_CS)
+                    outa[_CS] := 1
                     return $E000_0001
             else
                 return $E000_0000
@@ -612,34 +621,39 @@ PRI readreg(reg_nr, nr_bytes, ptr_buff) | tmp, i
         core#WRITE_TX_FIFO:
 
         core#READ_RX_FIFO:
-            io.low(_CS)
-            spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg_nr)
-            repeat i from 0 to nr_bytes-1
-                byte[ptr_buff][i] := spi.shiftin(_MISO, _SCK, core#MISO_BITORDER, 8)
-            io.high(_CS)
+            outa[_CS] := 0
+'            spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg_nr)
+'            repeat i from 0 to nr_bytes-1
+'                byte[ptr_buff][i] := spi.shiftin(_MISO, _SCK, core#MISO_BITORDER, 8)
+            spi.wr_byte(reg_nr)
+            spi.rdblock_lsbf(ptr_buff, nr_bytes)
+            outa[_CS] := 1
 
         core#FAST_RESP_A, core#FAST_RESP_B, core#FAST_RESP_C, core#FAST_RESP_D:         'Fast-response registers (FRR's) don't require checking the CTS flag
-            io.low(_CS)
-            spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg_nr)
-            repeat i from 0 to nr_bytes-1
-                byte[ptr_buff][i] := spi.shiftin(_MISO, _SCK, core#MISO_BITORDER, 8)
-            io.high(_CS)
+            outa[_CS] := 0
+'            spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg_nr)
+'            repeat i from 0 to nr_bytes-1
+'                byte[ptr_buff][i] := spi.shiftin(_MISO, _SCK, core#MISO_BITORDER, 8)
+            spi.wr_byte(reg_nr)
+            spi.rdblock_lsbf(ptr_buff, nr_bytes)
+            outa[_CS] := 1
         other:
             return FALSE
 
-PRI writeReg(reg_nr, nr_bytes, ptr_buff) | i, tmp[3]
+PRI writeReg(reg_nr, nr_bytes, ptr_buff): r | i, tmp[3]
 ' Write nr_bytes to register 'reg_nr' stored at ptr_buff
 'XXX no validation
     if result := cleartosend(DESELECT_AFTER)
-        io.low(_CS)
-        spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg_nr)
-    
+        outa[_CS] := 0
+'        spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg_nr)
+        spi.wr_byte(reg_nr)
         case nr_bytes
             1..64:
-                repeat i from 0 to nr_bytes-1
-                    spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, byte[ptr_buff][i])
+'                repeat i from 0 to nr_bytes-1
+'                    spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, byte[ptr_buff][i])
+                spi.wrblock_lsbf(ptr_buff, nr_bytes)
             other:
-        io.high(_CS)
+        outa[_CS] := 1
         return
     else
         return $E000_0000

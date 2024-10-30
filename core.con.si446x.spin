@@ -3,9 +3,9 @@
     Filename: core.con.si446x.spin
     Author: Jesse Burt
     Description: Low-level constants
-    Copyright (c) 2020
+    Copyright (c) 2021
     Started Jun 22, 2019
-    Updated May 3, 2020
+    Updated Jun 6, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -13,14 +13,11 @@
 CON
 
 ' SPI Configuration
-    CPOL                        = 0
-    SCK_DELAY                   = 1
     SCK_MAX_FREQ                = 10_000_000
-    MOSI_BITORDER               = 5             ' MSBFIRST
-    MISO_BITORDER               = 0             ' MSBPRE
+    SPI_MODE                    = 0
 
     OSC_FREQ_NOMINAL            = 30_000_000    ' 30MHz nominal oscillator freq
-    TPOR                        = 5             ' tPOR - Power-On Reset time
+    T_POR                       = 5_000         ' uSec
 
     NOT_CLEAR                   = $00
     CLEAR                       = $FF           ' Value returned by the device if it is Clear to Send/ready for commands
