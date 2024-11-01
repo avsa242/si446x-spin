@@ -4,7 +4,7 @@
     Description:    Driver for Silicon Labs Si446x series transceivers
     Author:         Jesse Burt
     Started:        Jun 22, 2019
-    Updated:        Oct 31, 2024
+    Updated:        Nov 1, 2024
     Copyright (c) 2024 - See end of file for terms of use.
 ----------------------------------------------------------------------------------------------------
 }
@@ -163,14 +163,14 @@ PUB carrier_freq(freq=-2): c | tmp_fc, tmp_band, plldiv, pfd_freq, inte, ratio, 
         other:
             inte := tmp_fc.byte[INTE_S]
             frac := (tmp_fc.byte[FRAC_MSB] << 16) | (tmp_fc.byte[FRAC_MID] << 8) | tmp_fc.byte[FRAC_LSB]
-            tmp_band &= core.BITS_BAND
+            tmp_band &= core.BAND_BITS
             plldiv := lookupz(tmp_band: 4, 6, 8, 12, 16, 24, 24, 24)
             inte *= FP_SCALE
             rest := u64.multdiv(frac, FP_SCALE, NINETN)
             return u64.multdiv( (inte + rest), (F_XOSC_PRESCALE / plldiv), FP_SCALE)
 
     tmp_band := lookdownz(plldiv: 4, 6, 8, 12, 16, 24, 24, 24)
-    tmp_band |= (1 << core.FLD_SY_SEL)              ' Make sure the SY_SEL field is set
+    tmp_band |= (1 << core.SY_SEL)              ' Make sure the SY_SEL field is set
                                                     ' (calcs below only valid if so)
     pfd_freq := F_XOSC_PRESCALE / plldiv
     inte := (freq / pfd_freq) - 1
@@ -215,7 +215,7 @@ PUB clk_test(clkdiv): r | tmp[2]
     r := writereg(core.GPIO_PIN_CFG, 7, @tmp)
     tmp[0] := 0
     tmp[1] := 0
-    tmp := (1 << core.FLD_DIV_CLK_EN) | (clkdiv << core.FLD_DIV_CLK_SEL)
+    tmp := (1 << core.DIV_CLK_EN) | (clkdiv << core.DIV_CLK_SEL)
     r := set_property(core.GROUP_GLOBAL, 1, core.GLOBAL_CLK_CFG, @tmp)
 
 
@@ -308,7 +308,7 @@ PUB fifo_tx_bytes(): t
 
 PUB flush_rx() | tmp
 ' Flush the RX FIFO
-    tmp := (1 << core.FLD_RX)
+    tmp := (1 << core.RX)
     writereg(core.FIFO_INFO, 1, @tmp)
 
 
@@ -325,7 +325,7 @@ PUB freq_dev(freq=-2): curr_freq | tmp, outdiv, tmp1, tmp2
 '   NOTE: The resolution of the Si446x synthesizer is 28.6Hz. Value set will be nearest multiple.
     outdiv := 0
     get_property(core.GROUP_MODEM, 1, core.MODEM_CLKGEN_BAND, @outdiv)
-    outdiv := lookupz(outdiv & core.BITS_BAND: 4, 6, 8, 12, 16, 24, 24, 24)
+    outdiv := lookupz(outdiv & core.BAND_BITS: 4, 6, 8, 12, 16, 24, 24, 24)
     case freq
         29..1_500_000:'28.6hz res
             tmp1 := NINETN * outdiv
@@ -370,11 +370,11 @@ PUB modulation(mode=-2): c | tmp
     get_property(core.GROUP_MODEM, 1, core.MODEM_MOD_TYPE, @tmp)
     case mode
         MOD_CW, MOD_OOK, MOD_2FSK, MOD_2GFSK, MOD_4FSK, MOD_4GFSK:
-            tmp &= core.MASK_MOD_TYPE
-            tmp := (tmp | mode) & core.MASK_MODEM_MOD_TYPE
+            tmp &= core.MOD_TYPE_MASK
+            tmp := (tmp | mode) & core.MODEM_MOD_TYPE_MASK
             set_property(core.GROUP_MODEM, 1, core.MODEM_MOD_TYPE, @tmp)
         other:
-            return (tmp & core.BITS_MOD_TYPE)
+            return (tmp & core.MOD_TYPE_BITS)
 
 
 PUB noop() | tmp
@@ -421,7 +421,7 @@ PUB power_up(osc_freq=-2): r | tmp[2]
 '   Valid values: 25_000_000 to 32_000_000
 '   Any other value sets the nominal 30_000_000
     tmp.byte[core.ARG_BOOT_OPTIONS] := core.EZRADIO_PRO
-    tmp.byte[core.ARG_XTAL_OPTIONS] := core.XTAL
+    tmp.byte[core.ARG_XTAL_OPTIONS] := core.XO_XTAL
     case osc_freq
         25_000_000..32_000_000:
             tmp.byte[core.ARG_XO_FREQ_MSB] := osc_freq.byte[3]
@@ -503,17 +503,17 @@ PUB syncwd_len(length=-2): c
     case length
         1..4:
             length -= 1
-            c &= core.MASK_LENGTH
-            c := (c | length) & core.MASK_SYNC_CONFIG
+            c &= core.LENGTH_MASK
+            c := (c | length) & core.SYNC_CONFIG_MASK
             c := set_property(core.GROUP_SYNC, 1, core.SYNC_CONFIG, @c)
         other:
-            return (c & core.BITS_LENGTH) + 1
+            return (c & core.LENGTH_BITS) + 1
 
 
 PUB tx_mode() | cmd_pkt[2]
 ' Change chip state to transmit
     cmd_pkt.byte[0] := 0                                         ' Channel
-    cmd_pkt.byte[1] := (STATE_TX_TUNE << core.FLD_TXCOMPLETE_STATE)   ' Condition
+    cmd_pkt.byte[1] := (STATE_TX_TUNE << core.TXCOMPLETE_STATE)   ' Condition
     cmd_pkt.byte[2] := 0                                         ' Length MSB
     cmd_pkt.byte[3] := 0                                         '   LSB
     cmd_pkt.byte[4] := 0                                         ' Inter-packet delay (uS)
@@ -538,7 +538,7 @@ PUB tx_pwr(pwr=-255): c
         other:
             c := 0
             get_property(core.GROUP_PA, 1, core.PA_POWER_LEVEL, @c)
-            return (c & core.BITS_DDAC)
+            return (c & core.DDAC_BITS)
 
 
 PRI swap(swp_long): l | i

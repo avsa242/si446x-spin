@@ -1,13 +1,12 @@
 {
-    --------------------------------------------
-    Filename: core.con.si446x.spin
-    Author: Jesse Burt
-    Description: Low-level constants
-    Copyright (c) 2021
-    Started Jun 22, 2019
-    Updated Jun 6, 2021
-    See end of file for terms of use.
-    --------------------------------------------
+----------------------------------------------------------------------------------------------------
+    Filename:       core.con.si446x.spin
+    Description:    SI446x-specific constants
+    Author:         Jesse Burt
+    Started:        Jun 22, 2019
+    Updated:        Nov 1, 2024
+    Copyright (c) 2024 - See end of file for terms of use.
+----------------------------------------------------------------------------------------------------
 }
 
 CON
@@ -37,16 +36,16 @@ CON
 
     POWER_UP                    = $02
         ARG_BOOT_OPTIONS        = 0
-            FLD_PATCH           = 7
-            FLD_FUNC            = 0
-            BITS_FUNC           = %111111
+            PATCH               = 7
+            FUNC                = 0
+            FUNC_BITS           = %111111
             EZRADIO_PRO         = 1
-            NO_PATCH            = 0 << FLD_PATCH
-            PATCH               = 1 << FLD_PATCH
+            NO_PATCH            = 0 << PATCH
+            DO_PATCH            = 1 << PATCH
         ARG_XTAL_OPTIONS        = 1
-            FLD_TCXO            = 0
-            XTAL                = 0 << FLD_TCXO
-            TCXO                = 1 << FLD_TCXO
+            TCXO                = 0
+            XO_XTAL             = 0 << TCXO
+            XO_TCXO             = 1 << TCXO
         ARG_XO_FREQ_MSB         = 2
         ARG_XO_FREQ_MSMB        = 3
         ARG_XO_FREQ_LSMB        = 4
@@ -88,12 +87,12 @@ CON
         ARG_GPIO3               = 3
         ARG_NIRQ                = 4
         ARG_SDO                 = 5
-            FLD_PULL_CTL        = 6
-            PULL_DIS            = 0 << FLD_PULL_CTL
-            PULL_EN             = 1 << FLD_PULL_CTL
+            PULL_CTL            = 6
+            PULL_DIS            = 0 << PULL_CTL
+            PULL_EN             = 1 << PULL_CTL
         ARG_GEN_CONFIG          = 6
-            FLD_DRV_STRENGTH    = 5
-            BITS_DRV_STRENGTH   = %11
+            DRV_STRENGTH        = 5
+            DRV_STRENGTH_BITS   = %11
             DRV_STRENGTH_HIGH   = 0
             DRV_STRENGTH_MEDHIGH= 1
             DRV_STRENGTH_MEDLOW = 2
@@ -103,8 +102,8 @@ CON
 
     FIFO_INFO                   = $15
         ARG_FIFO                = 0
-        FLD_TX                  = 0
-        FLD_RX                  = 1
+        TX                      = 0
+        RX                      = 1
 
     PACKET_INFO                 = $16
     IRCAL                       = $17
@@ -121,21 +120,21 @@ CON
 
     START_TX                    = $31
     CONDITION_MASK              = $FF
-        FLD_TXCOMPLETE_STATE    = 4
-        FLD_UPDATE              = 3
-        FLD_RETRANSMIT          = 2
-        FLD_START               = 0
-        BITS_TXCOMPLETE_STATE   = %1111
-        BITS_START              = %11
-        MASK_TXCOMPLETE_STATE   = CONDITION_MASK ^ (BITS_TXCOMPLETE_STATE << FLD_TXCOMPLETE_STATE)
-        MASK_UPDATE             = CONDITION_MASK ^ (1 << FLD_UPDATE)
-        MASK_RETRANSMIT         = CONDITION_MASK ^ (1 << FLD_RETRANSMIT)
-        MASK_START              = CONDITION_MASK ^ (BITS_START << FLD_START)
+        TXCOMPLETE_STATE        = 4
+        UPDATE                  = 3
+        RETRANSMIT              = 2
+        START                   = 0
+        TXCOMPLETE_STATE_BITS   = %1111
+        START_BITS              = %11
+        TXCOMPLETE_STATE_MASK   = (TXCOMPLETE_STATE_BITS << TXCOMPLETE_STATE) ^ CONDITION_MASK
+        UPDATE_MASK             = (1 << UPDATE) ^ CONDITION_MASK
+        RETRANSMIT_MASK         = (1 << RETRANSMIT) ^ CONDITION_MASK
+        START_MASK              = (START_BITS << START) ^ CONDITION_MASK
 
     START_RX                    = $32
 
     REQUEST_DEVICE_STATE        = $33
-        BITS_MAIN_STATE         = %1111
+        MAIN_STATE_BITS         = %1111
 
     CHANGE_STATE                = $34
     STATE_SLEEP                 = 1     ' Applicable to REQUEST_DEVICE_STATE and CHANGE_STATE
@@ -163,16 +162,16 @@ CON
 '   Multiple individual properties within a group
     GROUP_GLOBAL                = $00   'XXX combine group numbers and index numbers into one 16bit num? simpler?
         GLOBAL_CLK_CFG          = $01
-        MASK_GLOBAL_CLK_CFG     = $7B
-            FLD_CLK_32K_SEL     = 0
-            FLD_DIV_CLK_SEL     = 3
-            FLD_DIV_CLK_EN      = 6
-            BITS_CLK_32K_SEL    = %11
-            BITS_DIV_CLK_SEL    = %111
-            BITS_DIV_CLK_EN     = %111
-            MASK_CLK_32K_SEL    = MASK_GLOBAL_CLK_CFG ^ (BITS_CLK_32K_SEL << FLD_CLK_32K_SEL)
-            MASK_DIV_CLK_SEL    = MASK_GLOBAL_CLK_CFG ^ (BITS_DIV_CLK_SEL << FLD_DIV_CLK_SEL)
-            MASK_DIV_CLK_EN     = MASK_GLOBAL_CLK_CFG ^ (BITS_DIV_CLK_EN << FLD_DIV_CLK_EN)
+        GLOBAL_CLK_CFG_MASK     = $7B
+            CLK_32K_SEL         = 0
+            DIV_CLK_SEL         = 3
+            DIV_CLK_EN          = 6
+            CLK_32K_SEL_BITS    = %11
+            DIV_CLK_SEL_BITS    = %111
+            DIV_CLK_EN_BITS     = %111
+            CLK_32K_SEL_MASK    = (CLK_32K_SEL_BITS << CLK_32K_SEL) ^ GLOBAL_CLK_CFG
+            DIV_CLK_SEL_MASK    = (DIV_CLK_SEL_BITS << DIV_CLK_SEL) ^ GLOBAL_CLK_CFG
+            DIV_CLK_EN_MASK     = (DIV_CLK_EN_BITS << DIV_CLK_EN) ^ GLOBAL_CLK_CFG
             DIV_1               = 0
     GROUP_INT_CTL               = $01
     GROUP_FRR_CTL               = $02
@@ -182,19 +181,19 @@ CON
 
     GROUP_SYNC                  = $11
         SYNC_CONFIG             = $00
-        MASK_SYNC_CONFIG        = $FF
-            FLD_LENGTH          = 0
-            FLD_MANCH           = 2
-            FLD_4FSK            = 3
-            FLD_RX_ERRORS       = 4
-            FLD_SKIP_TX         = 7
-            BITS_LENGTH         = %11
-            BITS_RX_ERRORS      = %111
-            MASK_LENGTH         = MASK_SYNC_CONFIG ^ (BITS_LENGTH << FLD_LENGTH)
-            MASK_MANCH          = MASK_SYNC_CONFIG ^ (1 << FLD_MANCH)
-            MASK_4FSK           = MASK_SYNC_CONFIG ^ (1 << FLD_4FSK)
-            MASK_RX_ERRORS      = MASK_SYNC_CONFIG ^ (BITS_RX_ERRORS << FLD_RX_ERRORS)
-            MASK_SKIP_TX        = MASK_SYNC_CONFIG ^ (1 << FLD_SKIP_TX)
+        SYNC_CONFIG_MASK        = $FF
+            LENGTH              = 0
+            MANCH               = 2
+            FSK4                = 3
+            RX_ERRORS           = 4
+            SKIP_TX             = 7
+            LENGTH_BITS         = %11
+            RX_ERRORS_BITS      = %111
+            LENGTH_MASK         = (LENGTH_BITS << LENGTH) ^ SYNC_CONFIG
+            MANCH_MASK          = (1 << MANCH) ^ SYNC_CONFIG
+            FSK4_MASK           = (1 << FSK4) ^ SYNC_CONFIG
+            RX_ERRORS_MASK      = (RX_ERRORS_BITS << RX_ERRORS) ^ SYNC_CONFIG
+            SKIP_TX_MASK        = (1 << SKIP_TX) ^ SYNC_CONFIG
 
         SYNC_BITS_MSB           = $01
         SYNC_BITS_MMB           = $02
@@ -210,57 +209,57 @@ CON
 
     GROUP_MODEM                 = $20
         MODEM_MOD_TYPE          = $00
-        MASK_MODEM_MOD_TYPE     = $FF
-            FLD_MOD_TYPE        = 0
-            FLD_MOD_SOURCE      = 3
-            FLD_TX_DIRECT_MODE_GPIO = 5
-            FLD_TX_DIRECT_MODE_TYPE = 7
-            BITS_MOD_TYPE       = %111
-            BITS_MOD_SOURCE     = %11
-            BITS_TX_DIRECT_MODE_GPIO    = %11
-            MASK_MOD_TYPE       = MASK_MODEM_MOD_TYPE ^ (BITS_MOD_TYPE << FLD_MOD_TYPE)
-            MASK_MOD_SOURCE     = MASK_MODEM_MOD_TYPE ^ (BITS_MOD_SOURCE << FLD_MOD_SOURCE)
-            MASK_TX_DIRECT_MODE_GPIO    = MASK_MODEM_MOD_TYPE ^ (BITS_TX_DIRECT_MODE_GPIO << FLD_TX_DIRECT_MODE_GPIO)
-            MASK_TX_DIRECT_MODE_TYPE    = MASK_MODEM_MOD_TYPE ^ (1 << FLD_TX_DIRECT_MODE_TYPE)
+        MODEM_MOD_TYPE_MASK     = $FF
+            MOD_TYPE            = 0
+            MOD_SOURCE          = 3
+            TX_DIRECT_MODE_GPIO = 5
+            TX_DIRECT_MODE_TYPE = 7
+            MOD_TYPE_BITS       = %111
+            MOD_SOURCE_BITS     = %11
+            TX_DIRECT_MODE_GPIO_BITS    = %11
+            MOD_TYPE_MASK       = (MOD_TYPE_BITS << MOD_TYPE) ^ MODEM_MOD_TYPE_MASK
+            MOD_SOURCE_MASK     = (MOD_SOURCE_BITS << MOD_SOURCE) ^ MODEM_MOD_TYPE_MASK
+            TX_DIRECT_MODE_GPIO_MASK = (TX_DIRECT_MODE_GPIO_BITS << TX_DIRECT_MODE_GPIO) ^ MODEM_MOD_TYPE_MASK
+            TX_DIRECT_MODE_TYPE_MASK = (1 << TX_DIRECT_MODE_TYPE) ^ MODEM_MOD_TYPE_MASK
 
         MODEM_DATA_RATE         = $03   '$03..$05
         MODEM_TX_NCO_MODE       = $06   '$06..$09
-            FLD_NCOMOD          = 0
-            FLD_TXOSR           = 2
-            BITS_TXOSR          = %11
+            NCOMOD              = 0
+            TXOSR               = 2
+            TXOSR_BITS          = %11
 
         MODEM_FREQ_DEV          = $0A
         MODEM_FREQ_DEV_MASK     = $1FFFF
 
         MODEM_DECIMATION_CFG1   = $1E
         MODEM_DECIMATION_CFG1_MASK  = $FE
-            FLD_NDEC0           = 1
-            FLD_NDEC1           = 4
-            FLD_NDEC2           = 6
-            BITS_NDEC0          = %111
-            BITS_NDEC1          = %11
-            BITS_NDEC2          = %11
-            MASK_NDEC0          = MODEM_DECIMATION_CFG1_MASK ^ (BITS_NDEC0 << FLD_NDEC0)
-            MASK_NDEC1          = MODEM_DECIMATION_CFG1_MASK ^ (BITS_NDEC1 << FLD_NDEC1)
-            MASK_NDEC2          = MODEM_DECIMATION_CFG1_MASK ^ (BITS_NDEC2 << FLD_NDEC2)
+            NDEC0               = 1
+            NDEC1               = 4
+            NDEC2               = 6
+            NDEC0_BITS          = %111
+            NDEC1_BITS          = %11
+            NDEC2_BITS          = %11
+            NDEC0_MASK          = (NDEC0_BITS << NDEC0) ^ MODEM_DECIMATION_CFG1_MASK
+            NDEC1_MASK          = (NDEC1_BITS << NDEC1) ^ MODEM_DECIMATION_CFG1_MASK
+            NDEC2_MASK          = (NDEC2_BITS << NDEC2) ^ MODEM_DECIMATION_CFG1_MASK
 
         MODEM_CLKGEN_BAND       = $51
         MODEM_CLKGEN_BAND_MASK  = $1F
-            FLD_FORCE_SY_RECAL  = 4
-            FLD_SY_SEL          = 3
-            FLD_BAND            = 0
-            BITS_BAND           = %111
-            MASK_FORCE_SY_RECAL = MODEM_CLKGEN_BAND_MASK ^ (1 << FLD_FORCE_SY_RECAL)
-            MASK_SY_SEL         = MODEM_CLKGEN_BAND_MASK ^ (1 << FLD_SY_SEL)
-            MASK_BAND           = MODEM_CLKGEN_BAND_MASK ^ (BITS_BAND << FLD_BAND)
+            FORCE_SY_RECAL      = 4
+            SY_SEL              = 3
+            BAND                = 0
+            BAND_BITS           = %111
+            FORCE_SY_RECAL_MASK = (1 << FORCE_SY_RECAL) ^ MODEM_CLKGEN_BAND_MASK
+            SY_SEL_MASK         = (1 << SY_SEL) ^ MODEM_CLKGEN_BAND_MASK
+            BAND_MASK           = (BAND_BITS << BAND) ^ MODEM_CLKGEN_BAND_MASK
 
     GROUP_MODEM_CHFLT           = $21
 
     GROUP_PA                    = $22
         PA_POWER_LEVEL          = $01
         PA_POWER_LEVEL_MASK     = $7F
-            FLD_DDAC            = 0
-            BITS_DDAC           = %1111111
+            DDAC                = 0
+            DDAC_BITS           = %1111111
 
     GROUP_SYNTH                 = $23
     GROUP_MATCH                 = $30
@@ -269,5 +268,28 @@ CON
         FREQ_CONTROL_INTE       = $00
     GROUP_RX                    = $50
     
-PUB Null
+
+PUB null()
 ' This is not a top-level object
+
+
+DAT
+{
+Copyright 2024 Jesse Burt
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+}
+
