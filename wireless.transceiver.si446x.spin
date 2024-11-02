@@ -188,12 +188,6 @@ PUB carrier_freq(freq=-2): c | tmp_fc, tmp_band, plldiv, pfd_freq, inte, ratio, 
     set_property(core.GROUP_FREQ, 4, core.FREQ_CONTROL_INTE, tmp_fc)
 
 
-PUB int_clear() | l
-' Clear interrupts
-    l := command(core.GET_INT_STATUS)
-    return @_response
-
-
 PUB clk_test(clkdiv): r | tmp[2]
 ' Test system clock output, divided by clkdiv
 '   Valid values: 1, 2, 3, 7_5 (7.5), 10, 15, 30
@@ -342,10 +336,49 @@ PUB idle()
     opmode(STATE_SPI_ACTIVE)
 
 
+PUB int_clear(m) | l, tmp
+' Clear interrupts
+'   m:  bitmask of interrupts to clear (0: ignore, 1: clear interrupt)
+'   b22..0:
+'       22: CAL_PEND
+'       21: FIFO_UNDERFLOW_OVERFLOW_ERROR_PEND
+'       20: STATE_CHANGE_PEND
+'       19: CMD_ERROR_PEND
+'       18: CHIP_READY_PEND
+'       17: LOW_BATT_PEND
+'       16: WUT_PEND
+'       15: RSSI_LATCH_PEND
+'       14: POSTAMBLE_DETECT_PEND
+'       13: INVALID_SYNC_PEND
+'       12: RSSI_JUMP_PEND
+'       11: RSSI_PEND
+'       10: INVALID_PREAMBLE_PEND
+'       9:  PREAMBLE_DETECT_PEND
+'       8:  SYNC_DETECT_PEND
+'       7:  FILTER_MATCH_PEND
+'       6:  FILTER_MISS_PEND
+'       5:  PACKET_SENT_PEND
+'       4:  PACKET_RX_PEND
+'       3:  CRC_ERROR_PEND
+'       2:  ALT_CRC_ERROR_PEND
+'       1:  TX_FIFO_ALMOST_EMPTY_PEND
+'       0:  RX_FIFO_ALMOST_FULL_PEND
+    ' in the Si446x, a set bit leaves the interrupt as-is and a cleared bit clears the interrupt,
+    '   so to make this work like other drivers' int_clear() methods (i.e., the opposite),
+    '   flip the bits before they get written
+    tmp.byte[core.ARG_PH_CLR_PEND] := m.byte[0] ^ $ff
+    tmp.byte[core.ARG_MODEM_CLR_PEND] := m.byte[1] ^ $ff
+    tmp.byte[core.ARG_CHIP_CLR_PEND] := m.byte[2] ^ $ff
+    command(core.GET_INT_STATUS, tmp, 3)
+    r.byte[0] := _response[2]                   ' PH_PEND
+    r.byte[1] := _response[4]                   ' MODEM_PEND
+    r.byte[2] := _response[6]                   ' CHIP_PEND
+
+
 PUB interrupt(): i | tmp
 ' Read interrupt status
 '   Returns: interrupt states
-'   b23..0:
+'   b22..0:
 '       22: CAL_PEND
 '       21: FIFO_UNDERFLOW_OVERFLOW_ERROR_PEND
 '       20: STATE_CHANGE_PEND
