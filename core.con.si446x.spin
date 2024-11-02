@@ -4,7 +4,7 @@
     Description:    SI446x-specific constants
     Author:         Jesse Burt
     Started:        Jun 22, 2019
-    Updated:        Nov 1, 2024
+    Updated:        Nov 2, 2024
     Copyright (c) 2024 - See end of file for terms of use.
 ----------------------------------------------------------------------------------------------------
 }
@@ -152,10 +152,10 @@ CON
     WRITE_TX_FIFO               = $66
     READ_RX_FIFO                = $77
     
-    FAST_RESP_A                 = $50
-    FAST_RESP_B                 = $51
-    FAST_RESP_C                 = $53
-    FAST_RESP_D                 = $57
+    FRR_A_READ                  = $50
+    FRR_B_READ                  = $51
+    FRR_C_READ                  = $53
+    FRR_D_READ                  = $57
 
 ' Properties
 '   Properties are organized together with related functionality in 'Groups'
