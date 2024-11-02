@@ -342,7 +342,7 @@ PUB idle()
     opmode(STATE_SPI_ACTIVE)
 
 
-PUB interrupt(): i
+PUB interrupt(): i | tmp
 ' Read interrupt status
 '   Returns: interrupt states
 '   b23..0:
